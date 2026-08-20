@@ -1,0 +1,23 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "GInputNext_GTA3", "projects\GInputNext_GTA3.vcxproj", "{159BF0E2-A14A-4C48-9798-A2B9B48A11C1}"
+EndProject
+Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "GInputNext_GTAVC", "projects\GInputNext_GTAVC.vcxproj", "{2710C730-F8C3-47AB-A28F-C5F20A8BF829}"
+EndProject
+Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "GInputNext_GTASA", "projects\GInputNext_GTASA.vcxproj", "{8D691A24-BDB9-4EF7-8B47-B03D9739D874}"
+EndProject
+Global
+    GlobalSection(SolutionConfigurationPlatforms) = preSolution
+        Release|Win32 = Release|Win32
+    EndGlobalSection
+    GlobalSection(ProjectConfigurationPlatforms) = postSolution
+        {159BF0E2-A14A-4C48-9798-A2B9B48A11C1}.Release|Win32.ActiveCfg = Release|Win32
+        {159BF0E2-A14A-4C48-9798-A2B9B48A11C1}.Release|Win32.Build.0 = Release|Win32
+        {2710C730-F8C3-47AB-A28F-C5F20A8BF829}.Release|Win32.ActiveCfg = Release|Win32
+        {2710C730-F8C3-47AB-A28F-C5F20A8BF829}.Release|Win32.Build.0 = Release|Win32
+        {8D691A24-BDB9-4EF7-8B47-B03D9739D874}.Release|Win32.ActiveCfg = Release|Win32
+        {8D691A24-BDB9-4EF7-8B47-B03D9739D874}.Release|Win32.Build.0 = Release|Win32
+    EndGlobalSection
+EndGlobal

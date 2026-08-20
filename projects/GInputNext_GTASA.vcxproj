@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{8D691A24-BDB9-4EF7-8B47-B03D9739D874}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>GInputNext_GTASA</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(ProjectDir)..\dist\GTASA\GInputNext\</OutDir>
+    <IntDir>$(ProjectDir)..\build\GInputNext_GTASA\</IntDir>
+    <TargetName>GInputNext</TargetName>
+    <TargetExt>.asi</TargetExt>
+    <LinkIncremental>false</LinkIncremental>
+    <GenerateManifest>false</GenerateManifest>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>false</SDLCheck>
+      <ConformanceMode>false</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PreprocessorDefinitions>GTASA;PLUGIN_SGV_10US;RW;WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\src;$(ProjectDir)..\include;$(SDL2_DIR)\include;$(PLUGIN_SDK_DIR)\plugin_sa;$(PLUGIN_SDK_DIR)\plugin_sa\game_sa;$(PLUGIN_SDK_DIR)\plugin_sa\game_sa\rw;$(PLUGIN_SDK_DIR)\safetyhook;$(PLUGIN_SDK_DIR)\shared;$(PLUGIN_SDK_DIR)\shared\game;$(PLUGIN_SDK_DIR)\shared\dxsdk;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)GInputNext.pdb</ProgramDatabaseFile>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(OutDir)GInputNext.map</MapFileName>
+      <AdditionalLibraryDirectories>$(PLUGIN_SDK_DIR)\output\lib;$(SDL2_DIR)\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>plugin.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImportLibrary>$(IntDir)GInputNext.lib</ImportLibrary>
+    </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(OutDir)" mkdir "$(OutDir)"
+copy /Y "$(SDL2_DIR)\lib\x86\SDL2.dll" "$(OutDir)GInputNext.SDL2.dll"
+copy /Y "$(ProjectDir)..\config\GInputNext.ini" "$(OutDir)GInputNext.ini"
+copy /Y "$(ProjectDir)..\third_party\SDL_GameControllerDB\gamecontrollerdb.txt" "$(OutDir)GInputNext.gamecontrollerdb.txt"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="$(ProjectDir)..\src\Config.cpp" />
+    <ClCompile Include="$(ProjectDir)..\src\ControllerCore.cpp" />
+    <ClCompile Include="$(ProjectDir)..\src\GTAAdapter.cpp" />
+    <ClCompile Include="$(ProjectDir)..\src\InputUpdateHook.cpp" />
+    <ClCompile Include="$(ProjectDir)..\src\Log.cpp" />
+    <ClCompile Include="$(ProjectDir)..\src\NativeDInputBlocker.cpp" />
+    <ClCompile Include="$(ProjectDir)..\src\PauseBridge.cpp" />
+    <ClCompile Include="$(ProjectDir)..\src\SDL2Dyn.cpp" />
+    <ClCompile Include="$(ProjectDir)..\src\Main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(ProjectDir)..\src\Config.h" />
+    <ClInclude Include="$(ProjectDir)..\src\ControllerCore.h" />
+    <ClInclude Include="$(ProjectDir)..\src\GTAAdapter.h" />
+    <ClInclude Include="$(ProjectDir)..\src\InputUpdateHook.h" />
+    <ClInclude Include="$(ProjectDir)..\src\Log.h" />
+    <ClInclude Include="$(ProjectDir)..\src\NativeDInputBlocker.h" />
+    <ClInclude Include="$(ProjectDir)..\src\PauseBridge.h" />
+    <ClInclude Include="$(ProjectDir)..\src\SDL2Dyn.h" />
+    <ClInclude Include="$(ProjectDir)..\src\SDLSignatureAudit.h" />
+    <ClInclude Include="$(ProjectDir)..\include\GInputNextAPI.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

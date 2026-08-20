@@ -1,0 +1,71 @@
+XML OK: GInputNext_GTA3.vcxproj
+XML OK: GInputNext_GTAVC.vcxproj
+XML OK: GInputNext_GTASA.vcxproj
+Per-game Plugin-SDK definitions/libs OK
+C++ brace balance OK
+Late NewState path removed; pre-UpdatePads staging OK
+No function-entry/raw-hook machinery; call-site RedirectCall only
+Module-local Mod Loader/scripts paths OK
+Deadzone + input timing smoke tests OK
+SA/VC/III UpdatePads targets present
+SDL2 dynamic loader wrapper coverage OK
+Early/unfailed-unload pad mutation guard present
+Optional normalized input-edge logging present
+XML OK + signature audit included: GInputNext_GTA3.vcxproj
+XML OK + signature audit included: GInputNext_GTAVC.vcxproj
+XML OK + signature audit included: GInputNext_GTASA.vcxproj
+SDL_JoystickIsHaptic wrapper corrected to int
+Compile-time SDL signature contract added
+Pre-UpdatePads staging architecture retained
+No whole-function/raw detour machinery introduced
+C++ brace balance OK
+XML OK + x86 SDL package copy: GInputNext_GTA3.vcxproj
+XML OK + x86 SDL package copy: GInputNext_GTAVC.vcxproj
+XML OK + x86 SDL package copy: GInputNext_GTASA.vcxproj
+Downloader pinned to official SDL2 2.32.10 VC package + x86 PE validation
+Build verifies x86 DLL architecture/exports and final package
+Missing GetType no longer hard-fails runtime
+Controller-family fallback detection present
+Pre-UpdatePads staging retained
+C++ brace balance OK
+No raw/function-entry detour machinery introduced
+XML OK + controller DB copy: GInputNext_GTA3.vcxproj
+XML OK + controller DB copy: GInputNext_GTAVC.vcxproj
+XML OK + controller DB copy: GInputNext_GTASA.vcxproj
+GC201 auto-map string present
+Generic PlayStation-position fallback corrected
+Invalid trigger axis safety present
+GUID-based GC201 mapping install present
+Pinned SDL_GameControllerDB downloader present
+Pre-UpdatePads staging retained
+No raw/function-entry detours introduced
+C++ brace balance OK
+Deadzone/timing/GC201/trigger smoke tests OK
+GC201 12-button variant omits nonexistent Guide mapping
+Dependency prep script + controller DB redownload validation present
+XML OK + PauseBridge: GInputNext_GTA3.vcxproj
+XML OK + PauseBridge: GInputNext_GTAVC.vcxproj
+XML OK + PauseBridge: GInputNext_GTASA.vcxproj
+Start logical state + Escape frontend bridge present
+Pause bridge runs after original UpdatePads; late event injection absent
+Pause compatibility switch enabled by default
+BUILD_ALL delegates to known-good per-game scripts and verifies outputs
+C++ brace balance OK
+No function-entry/raw detour machinery introduced
+Deadzone/timing/mapping/trigger/pause smoke tests OK
+FETCH_SDL2 returns instead of terminating parent PowerShell host
+BUILD_PROJECT uses real MSBuild process ExitCode + persistent logs
+BUILD_GTA3.bat keeps console open on direct launch
+BUILD_GTAVC.bat keeps console open on direct launch
+BUILD_GTASA.bat keeps console open on direct launch
+BUILD_ALL prepares once, builds/validates all three targets, pauses on direct launch
+All three vcxproj XML files parse
+C++ brace balance OK
+PREPARE_DEPS no longer passes trailing-backslash Root argument
+PREPARE_SDL2_X86 no longer passes trailing-backslash Root argument
+FETCH_SDL2.ps1 defensively normalizes/prints canonical Root
+FETCH_CONTROLLER_DB.ps1 defensively normalizes/prints canonical Root
+Reliable MSBuild exit-code/logging path retained
+BUILD_ALL dependency-once + all-three target flow retained
+All vcxproj XML files parse
+C++ brace balance OK
