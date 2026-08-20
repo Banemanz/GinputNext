@@ -2,42 +2,40 @@
 
 Modern controller support for the classic PC versions of **Grand Theft Auto III**, **Grand Theft Auto: Vice City**, and **Grand Theft Auto: San Andreas**.
 
-GInputNext is a shared x86 Plugin-SDK controller backend built around **SDL2**, intended as a modern successor in spirit to older XInput-focused controller mods. The goal is simple: let classic RenderWare-era GTA games properly use Xbox, PlayStation, Nintendo, and generic DirectInput-style controllers through one common input layer.
+GInputNext is a shared x86 Plugin-SDK controller backend built around **SDL2**. It is intended as a modern successor in spirit to older XInput-focused controller mods: Xbox, PlayStation, Nintendo, and legacy DirectInput-style pads go through one normalized input layer while GTA keeps its normal keyboard, mouse, frontend, gameplay, and script logic.
 
-> **Status:** Work in progress / experimental. GTA San Andreas 1.0 US is the primary tested target. GTA III and Vice City builds are included but still need broader runtime testing.
-
----
+> **Status:** Work in progress. GTA San Andreas 1.0 US is the most heavily tested target. GTA III and Vice City share the same backend and are supported, with additional runtime testing still welcome.
 
 ## Features
 
 - Shared controller backend for **GTA III / Vice City / San Andreas**
-- **Xbox 360 / Xbox One / Xbox Series** controller support
-- **DualShock 3 / DualShock 4 / DualSense** support through SDL2 where supported by Windows
-- **Nintendo Switch Pro / Joy-Con** family support through SDL2 mappings
-- Generic **DirectInput / SDL_Joystick** fallback for older or unusual USB controllers
-- Automatic controller hotplug / reconnect
+- Xbox 360 / Xbox One / Xbox Series controllers
+- DualShock 3 / DualShock 4 / DualSense through SDL2 where supported by Windows
+- Nintendo Switch Pro / Joy-Con family mappings
+- Generic DirectInput / SDL_Joystick fallback for older or unusual USB controllers
+- SDL controller mapping database support
+- Built-in compatibility mapping for legacy-style pads such as `GC201 Controller1.00`
+- Hotplug / reconnect
 - Analog sticks with configurable deadzones and sensitivity
-- Analog or digital trigger support
-- Rumble / haptic support where available
-- Optional gyro bridge on controllers exposed by SDL2 with motion sensors
-- Shared controller mapping database support
-- Built-in compatibility mapping for problematic legacy-style pads such as the tested **GC201 Controller1.00**
-- Native GTA keyboard + mouse input remains enabled
-- Native GTA DirectInput gamepad polling is suppressed to avoid double-input conflicts
-- Proper `CPad` integration so gameplay, menus, and scripts see controller state through the game's normal input structures
-- Start / Options can be bridged to the classic PC Escape pause path
-- Designed to work from the **game root**, **scripts folder**, or **Mod Loader subfolder**
-- Private SDL runtime loading through `GInputNext.SDL2.dll` to avoid DLL search-path and mod conflicts
-- Small exported C API for other ASI plugins to query controller state / family and request rumble
-
----
+- Analog or digital triggers
+- Rumble / haptics where available
+- Optional gyro bridge
+- Native GTA keyboard and mouse remain enabled
+- Native GTA DirectInput gamepad polling is suppressed to prevent double input
+- Controller state enters GTA through `CPad::PCTempJoyState` before the original `CPad::UpdatePads()` reconciliation
+- Start / Options compatibility bridge to the classic PC Escape pause path
+- Console-style auto aim / lock-on option
+- Separate normal-camera and weapon-aim vertical inversion
+- Game root, scripts-folder, and Mod Loader-friendly installation
+- Private `GInputNext.SDL2.dll` loading from the ASI directory
+- Small exported C API for other ASI plugins
 
 ## Supported Games
 
 | Game | Target executable | Plugin-SDK library | Status |
-|---|---|---:|---|
-| GTA III | 1.0 EN | `plugin_iii.lib` | Builds; runtime testing needed |
-| GTA Vice City | 1.0 EN | `plugin_vc.lib` | Builds; runtime testing needed |
+|---|---|---|---|
+| GTA III | 1.0 EN | `plugin_iii.lib` | Supported; runtime testing ongoing |
+| GTA Vice City | 1.0 EN | `plugin_vc.lib` | Supported; runtime testing ongoing |
 | GTA San Andreas | 1.0 US | `plugin.lib` | Primary tested target |
 
 Target Plugin-SDK commit:
@@ -46,20 +44,18 @@ Target Plugin-SDK commit:
 62fd0ef66f704cf7e649607b57cc6e8097ed6e58
 ```
 
----
+All three games are classic **32-bit x86** targets.
 
 ## Controller Architecture
 
 GInputNext does not replace GTA's entire input system.
-
-Instead, it replaces only the **gamepad hardware backend** while preserving the game's existing keyboard, mouse, scripts, frontend, and gameplay logic.
 
 ```text
 Controller
     ↓
 SDL2 GameController / SDL_Joystick
     ↓
-GInputNext normalized controller state
+GInputNext normalized state
     ↓
 CPad::PCTempJoyState
     ↓
@@ -70,22 +66,20 @@ OldState / NewState
 frontend / gameplay / SCM / CLEO / mods
 ```
 
-At the same time:
+At the hardware level:
 
 ```text
-Keyboard ───────► native GTA input
-Mouse ──────────► native GTA input
-Native DInput pad polling ──► disabled
-SDL2 controller input ───────► GInputNext
+Keyboard ───────────────────────► native GTA
+Mouse ──────────────────────────► native GTA
+GTA native DirectInput gamepad ─► suppressed
+SDL2 controller ────────────────► GInputNext
 ```
 
-This prevents the same physical controller from being read twice with two different button mappings.
-
----
+This avoids the same physical controller being read once by SDL2 and again by GTA's old DirectInput backend with a conflicting button map.
 
 ## Default Logical Mapping
 
-GInputNext normalizes controllers to GTA's PlayStation-style logical button layout.
+GInputNext normalizes controllers to GTA's PlayStation-style logical controller state.
 
 | SDL logical input | GTA logical input | PlayStation equivalent |
 |---|---|---|
@@ -99,39 +93,64 @@ GInputNext normalizes controllers to GTA's PlayStation-style logical button layo
 | RT | `RightShoulder2` | R2 |
 | Back | `Select` | Select / Create |
 | Start | `Start` | Start / Options |
-| Left stick click | `ShockButtonL` | L3 |
-| Right stick click | `ShockButtonR` | R3 |
+| Left-stick click | `ShockButtonL` | L3 |
+| Right-stick click | `ShockButtonR` | R3 |
 | D-pad | D-pad | D-pad |
 | Left stick | Left stick | Left stick |
 | Right stick | Right stick | Right stick |
 
-The game itself still decides what those logical controls do on foot, in vehicles, in menus, and in scripts.
-
----
+GTA itself still decides what those logical controls do on foot, in vehicles, in menus, and in scripts.
 
 ## Start / Pause Handling
 
-Classic PC GTA does not always treat the logical controller `Start` field as the retail pause key.
-
-By default GInputNext keeps a real logical Start state for scripts/mods **and** bridges Start / Options to GTA's native PC Escape pause path:
+The classic PC ports do not reliably treat the logical controller `Start` field as the retail pause key. By default GInputNext keeps a real logical Start state for scripts/mods **and** mirrors its edge into GTA's native PC Escape path:
 
 ```ini
 [Core]
 StartActsAsEscape=1
 ```
 
-This can be disabled if another frontend/input mod already implements its own Start-to-pause behavior.
+No Windows keyboard event is injected and the frontend is not called directly; GTA still owns pause/resume behavior.
 
----
+## Aiming Options
+
+```ini
+[Sticks]
+InvertCameraY=1
+InvertAimY=
+
+[Gameplay]
+AutoAim=1
+```
+
+`InvertCameraY` controls normal third-person / vehicle / free-look vertical direction.
+
+`InvertAimY` controls vertical right-stick direction while the logical Target button is held. Leave it blank to use the built-in game-specific default:
+
+| Game | `InvertAimY` default |
+|---|---:|
+| GTA III | `0` |
+| Vice City | `0` |
+| San Andreas | `1` |
+
+Set `InvertAimY=0` or `InvertAimY=1` explicitly to override that default.
+
+`AutoAim=1` uses each game's own `CPlayerPed::FindWeaponLockOnTarget()` target selection rather than implementing a custom scanner, so weapon range, target visibility, target priority, and target choice remain stock GTA.
+
+San Andreas keeps its free-aim state on the lock-on branch while controller Target is held. GTA III and Vice City have an additional PC-specific quirk: their stock lock-on branch is gated by `CCamera::m_bUseMouse3rdPerson`. GInputNext temporarily hands aiming ownership to the stock controller branch while Target is held, then restores the previous mouse-camera setting on release.
+
+More detail is in [`AIMING.md`](AIMING.md).
 
 ## Installation
+
+An ASI loader is required.
 
 ### Mod Loader
 
 Recommended layout:
 
 ```text
-GTA San Andreas/
+Game Folder/
 └── modloader/
     └── GInputNext/
         ├── GInputNext.asi
@@ -139,8 +158,6 @@ GTA San Andreas/
         ├── GInputNext.ini
         └── GInputNext.gamecontrollerdb.txt
 ```
-
-Equivalent layouts may be used for GTA III and Vice City when their ASI / Mod Loader setup supports loading plugins from subfolders.
 
 ### Scripts folder
 
@@ -155,8 +172,6 @@ Game Folder/
 
 ### Game root
 
-A traditional root install also works:
-
 ```text
 Game Folder/
 ├── GInputNext.asi
@@ -165,13 +180,11 @@ Game Folder/
 └── GInputNext.gamecontrollerdb.txt
 ```
 
-An ASI loader is required.
-
----
+The config, controller database, SDL runtime, and log are resolved relative to the ASI so nested Mod Loader installs do not require dumping everything into the game root.
 
 ## Configuration
 
-Example:
+Typical configuration:
 
 ```ini
 [Core]
@@ -190,7 +203,11 @@ RightInnerDeadzone=0.12
 OuterDeadzone=0.02
 LeftSensitivity=1.00
 RightSensitivity=1.00
-InvertRightY=0
+InvertCameraY=1
+InvertAimY=
+
+[Gameplay]
+AutoAim=1
 
 [Gyro]
 Enabled=0
@@ -204,15 +221,11 @@ MirrorGameRumble=1
 Strength=1.00
 ```
 
-For unknown legacy DirectInput controllers, a raw fallback map is also available in the `[GenericDirectInput]` section.
-
----
+Unknown legacy DirectInput devices can also use the raw `[GenericDirectInput]` fallback mapping.
 
 ## GC201 / Legacy PlayStation-Style DirectInput Mapping
 
-The tested `GC201 Controller1.00` exposes a classic 4-axis / 13-button / 1-hat layout.
-
-GInputNext contains an automatic profile for that device family:
+The tested `GC201 Controller1.00` exposes a classic 4-axis / 13-button / 1-hat layout. GInputNext includes an automatic profile:
 
 ```text
 b0  = Square
@@ -233,9 +246,7 @@ a0/a1 = Left stick
 a2/a3 = Right stick
 ```
 
-This mapping is installed before the device is opened as an SDL GameController.
-
----
+The mapping is installed before the device is opened through SDL's normalized GameController path.
 
 ## Building
 
@@ -243,19 +254,15 @@ This mapping is installed before the device is opened as an SDL GameController.
 
 - Visual Studio 2022 / v143
 - Win32 / x86 C++ toolchain
-- Plugin-SDK at commit:
-
-```text
-62fd0ef66f704cf7e649607b57cc6e8097ed6e58
-```
+- Plugin-SDK at commit `62fd0ef66f704cf7e649607b57cc6e8097ed6e58`
 
 Set:
 
 ```bat
-PLUGIN_SDK_DIR=C:\path\to\plugin-sdk
+set PLUGIN_SDK_DIR=C:\path\to\plugin-sdk
 ```
 
-The following Plugin-SDK Release libraries must already exist:
+The corresponding Plugin-SDK Release libraries must already exist:
 
 ```text
 output\lib\plugin_iii.lib
@@ -263,13 +270,13 @@ output\lib\plugin_vc.lib
 output\lib\plugin.lib
 ```
 
-### Build everything
+Prepare dependencies:
 
 ```bat
-BUILD_ALL.bat
+PREPARE_DEPS.bat
 ```
 
-### Build one game
+Build a target:
 
 ```bat
 BUILD_GTA3.bat
@@ -277,53 +284,21 @@ BUILD_GTAVC.bat
 BUILD_GTASA.bat
 ```
 
-### Prepare dependencies only
+The scripts download and validate the official **SDL2 2.32.10 Visual C++ development package**, select the **32-bit x86** runtime, and download the pinned SDL controller mapping database.
 
-```bat
-PREPARE_DEPS.bat
-```
-
-The build scripts automatically download and validate:
-
-- **SDL2 2.32.10 Visual C++ development package**
-- the **32-bit x86** `SDL2.dll`
-- a pinned `SDL_GameControllerDB`
-
-The build rejects the wrong SDL architecture and verifies required exports before compiling.
-
----
-
-## Build Outputs
+Outputs are created under:
 
 ```text
-dist/
-├── GTA3/
-│   └── GInputNext/
-│       ├── GInputNext.asi
-│       ├── GInputNext.SDL2.dll
-│       ├── GInputNext.ini
-│       └── GInputNext.gamecontrollerdb.txt
-├── GTAVC/
-│   └── GInputNext/
-│       └── ...
-└── GTASA/
-    └── GInputNext/
-        └── ...
+dist\GTA3\GInputNext\
+dist\GTAVC\GInputNext\
+dist\GTASA\GInputNext\
 ```
 
-Build transcripts are written to:
-
-```text
-build_logs/
-```
-
-The public BAT files pause on failure when launched directly so compiler or dependency errors do not disappear immediately.
-
----
+Build transcripts are written under `build_logs\`.
 
 ## Exported API
 
-`include/GInputNextAPI.h` exposes a small C ABI for other plugins:
+`include/GInputNextAPI.h` exposes a small C ABI:
 
 ```cpp
 GIN_GetAPIVersion();
@@ -333,110 +308,74 @@ GIN_GetState(...);
 GIN_Rumble(...);
 ```
 
-This can be used by other ASI mods for things such as:
-
-- dynamic Xbox / PlayStation / Nintendo button prompts
-- controller-aware UI
-- gyro-aware gameplay mods
-- custom rumble effects
-
----
+Other ASI plugins can use this for controller-family-aware prompts, controller-aware UI, motion features, or custom rumble.
 
 ## Runtime Logging
 
-`GInputNext.log` is written beside the ASI.
-
-Useful information includes:
+`GInputNext.log` is written beside the ASI and records useful information such as:
 
 - detected game/version
-- game directory
-- ASI module directory
+- game and ASI module directories
 - SDL2 runtime version
-- controller name
-- VID / PID
-- GameController vs generic joystick mode
-- detected controller family
-- raw joystick signature
+- controller name / VID / PID
+- normalized GameController vs generic joystick mode
 - installed mapping profile
 - DirectInput suppression status
 - pad-update bridge installation
-- optional normalized input-edge diagnostics
+- optional input-edge / auto-aim diagnostics
 
-Enable extra input logging with:
+Enable additional diagnostics with:
 
 ```ini
 [Core]
 DebugInput=1
 ```
 
----
-
 ## Known Limitations
 
-- GTA III and Vice City currently need more real-world controller/runtime testing.
-- Original DualShock 3 Bluetooth behavior on Windows still depends heavily on the installed driver / Bluetooth stack.
-- Unknown generic DirectInput devices may need a custom raw button/axis profile if they are not present in the SDL controller database.
-- Controller glyph replacement is not currently included; the exported controller-family API exists so a separate prompt module can implement it cleanly.
-- Gyro is experimental and disabled by default.
-- This project targets the classic **32-bit RenderWare PC releases**, not Definitive Edition.
-
----
+- GTA III and Vice City still benefit from more controller/runtime testing than San Andreas.
+- Original DualShock 3 Bluetooth behavior on Windows depends heavily on the installed driver / Bluetooth stack.
+- Unknown generic DirectInput pads may require a custom raw mapping if they are not in the SDL controller database.
+- Controller glyph replacement is not currently included; the exported controller-family API is intended to support a separate prompt module cleanly.
+- Gyro support is experimental and disabled by default.
+- Definitive Edition is not supported; this project targets the classic 32-bit RenderWare PC releases.
 
 ## Design Goals
 
-GInputNext intentionally avoids turning into a giant input rewrite.
-
-The project tries to keep its integration surface small:
+GInputNext intentionally keeps its integration surface small:
 
 - SDL2 owns controller hardware support
-- GTA keeps keyboard/mouse
-- GTA keeps frontend/gameplay/script behavior
+- GTA keeps keyboard and mouse
+- GTA keeps its frontend, gameplay, weapon targeting, and script behavior
 - Plugin-SDK provides the game bridge
-- controller mappings stay data-driven where possible
-- game-specific code stays thin
+- mappings stay data-driven where possible
+- game-specific differences stay behind thin compatibility code
 
-The result should be one controller backend that can be maintained across all three classic 3D-era GTA PC games.
-
----
+The goal is one maintainable controller backend across all three classic 3D-era GTA PC games.
 
 ## Third-Party Projects
 
-GInputNext uses or integrates with:
-
-- **SDL2** — controller, joystick, HID, sensor and haptic backend
+- **SDL2** — controller, joystick, HID, sensor, and haptic backend
 - **SDL_GameControllerDB** — community controller mappings
 - **Plugin-SDK** — GTA III / Vice City / San Andreas SDK bridge
 
-See `THIRD_PARTY_NOTICES.md` for licensing and pinned dependency details.
-
----
+See `THIRD_PARTY_NOTICES.md` for dependency and license information.
 
 ## License
 
-GInputNext source is released under the **MIT License** unless otherwise noted.
+GInputNext source is released under the **MIT License** unless otherwise noted. Third-party dependencies retain their respective licenses.
 
-Third-party dependencies retain their respective licenses.
+## Testing / Bug Reports
 
----
-
-## Contributing / Testing
-
-Controller testing is especially useful for:
+Testing is especially useful on:
 
 - GTA III 1.0 EN
 - Vice City 1.0 EN
 - San Andreas 1.0 US
-- DualShock 3
-- DualShock 4
+- DualShock 3 / 4
 - DualSense
 - Xbox controllers
 - Switch Pro controllers
-- unusual generic DirectInput USB pads
+- unusual DirectInput USB pads
 
-When reporting a controller issue, include `GInputNext.log` and, if relevant, enable:
-
-```ini
-DebugInput=1
-```
-
-and describe the physical button pressed versus the action observed in-game.
+For input issues, include `GInputNext.log`, enable `DebugInput=1` when useful, and describe the physical control pressed versus the observed in-game action.
