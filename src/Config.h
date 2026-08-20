@@ -48,7 +48,11 @@ struct Config {
     float leftSensitivity = 1.0f;
     float rightSensitivity = 1.0f;
     bool invertCameraY = true;
+#if defined(GTASA)
     bool invertAimY = true;
+#else
+    bool invertAimY = false;
+#endif
 
     bool autoAim = true;
 
