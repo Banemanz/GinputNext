@@ -432,7 +432,6 @@ void ControllerCore::ApplyDeadzones() {
         state_.rightX, state_.rightY,
         config_.rightInnerDeadzone, config_.outerDeadzone, config_.rightSensitivity);
 
-    if (config_.invertRightY) state_.rightY = -state_.rightY;
 }
 
 void ControllerCore::RefreshFamily() {

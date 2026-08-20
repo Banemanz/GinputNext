@@ -4,6 +4,7 @@
 #include "Config.h"
 #include "ControllerCore.h"
 #include "GTAAdapter.h"
+#include "GameplayBridge.h"
 #include "InputUpdateHook.h"
 #include "Log.h"
 #include "NativeDInputBlocker.h"
@@ -19,6 +20,7 @@ ControllerCore g_core;
 NativeDInputBlocker g_nativeDInput;
 InputUpdateHook g_inputHook;
 PauseBridge g_pauseBridge;
+GameplayBridge g_gameplayBridge;
 
 bool g_ready = false;
 bool g_initAttempted = false;
@@ -77,7 +79,7 @@ void __cdecl UpdatePadsBridge() {
         }
     }
 
-    GTAAdapter::StageBeforePadUpdate(g_core.State());
+    GTAAdapter::StageBeforePadUpdate(g_core.State(), g_config);
 
     // Execute the untouched original GTA input update. This creates proper
     // OldState/NewState transitions for normal gameplay controls.
@@ -91,6 +93,8 @@ void __cdecl UpdatePadsBridge() {
         g_config.startActsAsEscape,
         g_config.debugInput);
 
+    g_gameplayBridge.AfterPadUpdate(g_core.State(), g_config);
+
     GTAAdapter::MirrorGameRumble(g_core, g_config);
 }
 
@@ -99,6 +103,7 @@ void OnInit() {
     g_initAttempted = true;
 
     g_pauseBridge.Reset();
+    g_gameplayBridge.Reset();
 
     g_gameDir = GameDirectory();
     g_moduleDir = ModuleDirectory();
@@ -107,7 +112,7 @@ void OnInit() {
     // modloader\GInputNext\ or scripts\GInputNext install self-contained.
     LogOpen(JoinPath(g_moduleDir, "GInputNext.log"));
 
-    Log("GInputNext v7 starting for %s", GameTag());
+    Log("GInputNext v11 starting for %s", GameTag());
     Log("Plugin-SDK reports: %s", plugin::GetGameVersionName());
     Log("GameDir   = \"%s\"", g_gameDir.c_str());
     Log("ModuleDir = \"%s\"", g_moduleDir.c_str());
@@ -174,6 +179,7 @@ void ShutdownRuntime() {
     if (hadInputHook) {
         GTAAdapter::ClearStagedGamepad();
         g_pauseBridge.Reset();
+        g_gameplayBridge.Reset();
     }
 
     g_core.Shutdown();

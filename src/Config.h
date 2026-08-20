@@ -47,7 +47,10 @@ struct Config {
     float outerDeadzone = 0.02f;
     float leftSensitivity = 1.0f;
     float rightSensitivity = 1.0f;
-    bool invertRightY = false;
+    bool invertCameraY = true;
+    bool invertAimY = true;
+
+    bool autoAim = true;
 
     bool gyroEnabled = false;
     float gyroSensitivity = 0.35f;

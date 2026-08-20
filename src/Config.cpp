@@ -87,7 +87,12 @@ bool Config::Load(const std::string& path) {
     outerDeadzone = std::clamp(ParseFloat(Get(ini, "Sticks", "OuterDeadzone"), outerDeadzone), 0.0f, 0.25f);
     leftSensitivity = std::clamp(ParseFloat(Get(ini, "Sticks", "LeftSensitivity"), leftSensitivity), 0.1f, 3.0f);
     rightSensitivity = std::clamp(ParseFloat(Get(ini, "Sticks", "RightSensitivity"), rightSensitivity), 0.1f, 3.0f);
-    invertRightY = ParseBool(Get(ini, "Sticks", "InvertRightY"), invertRightY);
+    // Legacy v10 alias first, then the clearer v11 camera-specific key.
+    invertCameraY = ParseBool(Get(ini, "Sticks", "InvertRightY"), invertCameraY);
+    invertCameraY = ParseBool(Get(ini, "Sticks", "InvertCameraY"), invertCameraY);
+    invertAimY = ParseBool(Get(ini, "Sticks", "InvertAimY"), invertAimY);
+
+    autoAim = ParseBool(Get(ini, "Gameplay", "AutoAim"), autoAim);
 
     gyroEnabled = ParseBool(Get(ini, "Gyro", "Enabled"), gyroEnabled);
     gyroSensitivity = std::clamp(ParseFloat(Get(ini, "Gyro", "Sensitivity"), gyroSensitivity), 0.0f, 5.0f);

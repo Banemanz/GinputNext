@@ -21,6 +21,12 @@ static short Press(bool down) {
     return down ? 255 : 0;
 }
 
+static bool IsControllerTargetHeld(const CPad& pad, const UnifiedState& s) {
+    // Classic III/VC/SA GetTarget semantics use R1/RightShoulder1 for pad
+    // modes 0/1/2 and L1/LeftShoulder1 for mode 3.
+    return pad.Mode == 3 ? s.lb : s.rb;
+}
+
 } // namespace
 
 void GTAAdapter::ClearStagedGamepad() {
@@ -29,7 +35,7 @@ void GTAAdapter::ClearStagedGamepad() {
     std::memset(&pad->PCTempJoyState, 0, sizeof(pad->PCTempJoyState));
 }
 
-void GTAAdapter::StageBeforePadUpdate(const UnifiedState& s) {
+void GTAAdapter::StageBeforePadUpdate(const UnifiedState& s, const Config& config) {
     CPad* pad = CPad::GetPad(0);
     if (!pad) return;
 
@@ -49,7 +55,21 @@ void GTAAdapter::StageBeforePadUpdate(const UnifiedState& s) {
     d.LeftStickX  = AxisToPad(s.leftX);
     d.LeftStickY  = AxisToPad(s.leftY);
     d.RightStickX = AxisToPad(s.rightX);
-    d.RightStickY = AxisToPad(s.rightY);
+
+    float rightY = s.rightY;
+    const bool targeting = IsControllerTargetHeld(*pad, s);
+
+    // Camera and weapon-aim inversion are independent choices.
+    // Exactly one policy is selected for a frame, so enabling both does NOT
+    // double-invert while aiming.
+    const bool invertVertical =
+        targeting ? config.invertAimY : config.invertCameraY;
+
+    if (invertVertical) {
+        rightY = -rightY;
+    }
+
+    d.RightStickY = AxisToPad(rightY);
 
     // SDL logical layout -> GTA's PlayStation-named logical controller state:
     // A=Cross, B=Circle, X=Square, Y=Triangle.

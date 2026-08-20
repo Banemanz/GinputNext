@@ -69,3 +69,25 @@ Reliable MSBuild exit-code/logging path retained
 BUILD_ALL dependency-once + all-three target flow retained
 All vcxproj XML files parse
 C++ brace balance OK
+XML OK + GameplayBridge: GInputNext_GTA3.vcxproj
+XML OK + GameplayBridge: GInputNext_GTAVC.vcxproj
+XML OK + GameplayBridge: GInputNext_GTASA.vcxproj
+Aim inversion + autoaim config defaults present
+Aim-only controller Y inversion occurs before GTA reconciliation
+Stock lock-on acquisition + SA free-aim suppression wired
+v10 runtime wiring present
+v9 dependency/build fixes retained
+No raw/function-entry detour machinery introduced
+C++ brace balance OK
+Existing + aiming/autoaim smoke tests OK
+XML OK: GInputNext_GTA3.vcxproj
+XML OK: GInputNext_GTAVC.vcxproj
+XML OK: GInputNext_GTASA.vcxproj
+Independent camera/aim Y inversion config present
+Global inversion removed from SDL normalization layer
+Camera/aim inversion is contextual and non-cumulative
+III/VC/SA FindPlayerPed signatures separated correctly
+Runtime version log updated
+C++ brace balance OK
+No raw/function-entry detour machinery introduced
+Existing + camera/aim/cross-game signature smoke tests OK
