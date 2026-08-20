@@ -14,6 +14,9 @@ private:
     bool previousTarget_ = false;
     bool acquiredTarget_ = false;
     unsigned int nextRetryFrame_ = 0;
+
+    bool legacyMouseAimOverride_ = false;
+    bool savedMouse3rdPerson_ = true;
 };
 
 } // namespace gin
