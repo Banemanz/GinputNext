@@ -4,6 +4,7 @@
 #include "CPad.h"
 #include "CPlayerPed.h"
 #include "CTimer.h"
+#include "CCamera.h"
 #include "common.h"
 
 #if defined(GTASA)
@@ -26,10 +27,18 @@ static CPlayerPed* GetActivePlayerPed() {
 } // namespace
 
 void GameplayBridge::Reset() {
+#if defined(GTA3) || defined(GTAVC)
+    if (legacyMouseAimOverride_) {
+        CCamera::m_bUseMouse3rdPerson = savedMouse3rdPerson_;
+    }
+#endif
+
     lastFrame_ = 0xFFFFFFFFu;
     previousTarget_ = false;
     acquiredTarget_ = false;
     nextRetryFrame_ = 0;
+    legacyMouseAimOverride_ = false;
+    savedMouse3rdPerson_ = true;
 }
 
 void GameplayBridge::AfterPadUpdate(
@@ -37,6 +46,12 @@ void GameplayBridge::AfterPadUpdate(
     const Config& config) {
 
     if (!state.connected) {
+#if defined(GTA3) || defined(GTAVC)
+        if (legacyMouseAimOverride_) {
+            CCamera::m_bUseMouse3rdPerson = savedMouse3rdPerson_;
+            legacyMouseAimOverride_ = false;
+        }
+#endif
         previousTarget_ = false;
         acquiredTarget_ = false;
         return;
@@ -54,6 +69,36 @@ void GameplayBridge::AfterPadUpdate(
     const bool targeting = pad->GetTarget();
     const bool targetPressed = targeting && !previousTarget_;
     previousTarget_ = targeting;
+
+#if defined(GTA3) || defined(GTAVC)
+    // III/VC's stock player-weapon code only enters the controller lock-on
+    // branch when the PC mouse third-person camera mode is disabled. SDL can
+    // correctly deliver Target while the game still believes mouse-look owns
+    // aiming, which makes a direct lock-on attempt appear to do nothing.
+    //
+    // Temporarily hand aiming ownership to the stock controller branch while
+    // Target is held, then restore the user's previous mouse-camera mode.
+    if (config.autoAim && targeting) {
+        if (!legacyMouseAimOverride_) {
+            savedMouse3rdPerson_ = CCamera::m_bUseMouse3rdPerson;
+            legacyMouseAimOverride_ = true;
+
+            if (config.debugInput) {
+                Log("LegacyAutoAim: controller target took camera aim ownership; savedMouse3rdPerson=%d",
+                    savedMouse3rdPerson_ ? 1 : 0);
+            }
+        }
+        CCamera::m_bUseMouse3rdPerson = false;
+    } else if (legacyMouseAimOverride_) {
+        CCamera::m_bUseMouse3rdPerson = savedMouse3rdPerson_;
+        legacyMouseAimOverride_ = false;
+
+        if (config.debugInput) {
+            Log("LegacyAutoAim: restored mouse third-person camera mode=%d",
+                savedMouse3rdPerson_ ? 1 : 0);
+        }
+    }
+#endif
 
     if (!config.autoAim) {
         acquiredTarget_ = false;
