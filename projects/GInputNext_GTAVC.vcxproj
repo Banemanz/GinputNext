@@ -61,7 +61,7 @@
     <PostBuildEvent>
       <Command>if not exist "$(OutDir)" mkdir "$(OutDir)"
 copy /Y "$(SDL2_DIR)\lib\x86\SDL2.dll" "$(OutDir)GInputNext.SDL2.dll"
-copy /Y "$(ProjectDir)..\config\GInputNext.ini" "$(OutDir)GInputNext.ini"
+copy /Y "$(ProjectDir)..\config\GInputNext_III_VC.ini" "$(OutDir)GInputNext.ini"
 copy /Y "$(ProjectDir)..\third_party\SDL_GameControllerDB\gamecontrollerdb.txt" "$(OutDir)GInputNext.gamecontrollerdb.txt"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -79,6 +79,7 @@ copy /Y "$(ProjectDir)..\third_party\SDL_GameControllerDB\gamecontrollerdb.txt" 
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(ProjectDir)..\src\Config.h" />
+    <ClInclude Include="$(ProjectDir)..\src\ClassicFirstPersonAim.h" />
     <ClInclude Include="$(ProjectDir)..\src\ControllerCore.h" />
     <ClInclude Include="$(ProjectDir)..\src\GTAAdapter.h" />
     <ClInclude Include="$(ProjectDir)..\src\GameplayBridge.h" />

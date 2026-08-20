@@ -1,9 +1,9 @@
-# GInputNext v3 compatibility audit
+# GInputNext compatibility audit
 
 ## Exact targets
 
-Plugin-SDK:
-`62fd0ef66f704cf7e649607b57cc6e8097ed6e58`
+Plugin-SDK 2025-10-27 snapshot:
+`624a6a49265fd7a6fc63bda1611013ceabeacb8a`
 
 Classic x86 targets:
 
@@ -92,3 +92,37 @@ then closes SDL devices/subsystems.
 
 A C++ global destructor is included as a normal FreeLibrary/Mod Loader teardown
 fallback in addition to the Plugin-SDK RW shutdown event.
+
+## GTA III v13 weapon-camera scope
+
+GTA III 1.0 EN `CPlayerPed::ProcessPlayerWeapon` target: `0x4F1EF0`.
+
+v13 scans the EXE `.text` section for direct `CALL rel32` references to that
+target and redirects only those call sites. The function entry is untouched.
+The shim temporarily suppresses `CCamera::m_bUseMouse3rdPerson` only during the
+original weapon-processing call, restores it immediately, and cancels only a
+queued `MODE_SYPHON` camera handoff when the saved camera was the normal PC
+mouse camera. VC and SA do not include this source file.
+
+## GTA III v14 M16 isolation
+
+GTA III's M16 is a dedicated first-person weapon camera path, not a normal
+lock-on path. v14 explicitly bypasses both GInputNext auto-aim acquisition and
+the GTA III scoped mouse-camera compatibility shim while the current weapon is
+`WEAPONTYPE_M16`. The retail `ProcessPlayerWeapon()` implementation therefore
+controls `MODE_M16_1ST_PERSON` without a competing Syphon/lock target.
+
+Vice City and San Andreas source/project behavior is unchanged by this fix.
+
+
+## v15 III/VC first-person controller path
+
+- GTA III first-person family: M16, sniper rifle, rocket launcher.
+- Vice City first-person family: M4, Ruger, sniper rifle, laser scope, rocket
+  launcher, M60, camera.
+- These families bypass GInputNext lock-on injection/compatibility camera
+  overrides.
+- While controller Target is held, physical right stick is routed to the
+  stock `SniperModeLook*` left-stick channel and the game right-stick fields
+  are zeroed.
+- Normal lock-on weapons remain unchanged; GTA SA remains unchanged.

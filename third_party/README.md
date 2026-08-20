@@ -19,7 +19,7 @@ The ASI loads that exact file from its own directory at runtime.
 
 User-supplied checkout/build:
 
-`62fd0ef66f704cf7e649607b57cc6e8097ed6e58`
+`624a6a49265fd7a6fc63bda1611013ceabeacb8a`
 
 Required Release libs:
 

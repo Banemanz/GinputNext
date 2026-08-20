@@ -1,4 +1,4 @@
-# GInputNext camera / aiming behavior
+# GInputNext v15 camera / aiming behavior
 
 ## General camera vertical direction
 
@@ -14,33 +14,24 @@ camera, vehicle camera, and other non-targeting look modes.
 
 ```ini
 [Sticks]
-InvertAimY=
+InvertAimY=1
 ```
 
 This controls right-stick vertical direction while GTA's logical Target button
 is held.
 
-The built-in defaults intentionally differ because the three PC ports do not
-agree on controller aiming direction:
-
-```text
-GTA III        InvertAimY=0
-Vice City      InvertAimY=0
-San Andreas    InvertAimY=1
-```
-
-Leave `InvertAimY` blank to use that game-specific default, or explicitly set
-`0` / `1` to override it.
-
-Camera and aim inversion are alternatives, not cumulative:
+The two settings are alternatives, not cumulative:
 
 ```text
 Target held? no  -> InvertCameraY
 Target held? yes -> InvertAimY
 ```
 
-`InvertRightY` from older builds is accepted as a legacy alias for
-`InvertCameraY`, but new configs should use the clearer key.
+So `InvertCameraY=1` and `InvertAimY=1` gives the same corrected vertical
+direction in both normal camera and weapon aiming without double-inverting.
+
+`InvertRightY` from v10 is accepted as a legacy alias for `InvertCameraY`, but
+new configs should use the clearer v11 key.
 
 ## Auto aim / lock-on
 
@@ -53,25 +44,47 @@ GInputNext asks the game's own `CPlayerPed::FindWeaponLockOnTarget()` to
 acquire a target. It does not implement a custom target scanner, so weapon
 range, target visibility, target priority and target choice remain stock GTA.
 
-### San Andreas
+On San Andreas, AutoAim also keeps `m_bFreeAiming` false while Target is held.
 
-While controller Target is held, AutoAim also keeps the player's
-`m_bFreeAiming` flag false so the game remains on its normal lock-on path.
 
-### GTA III / Vice City
+## GTA III / Vice City PC camera compatibility
 
-The original III/VC PC weapon code has an extra PC-specific gate: controller
-lock-on only runs while `CCamera::m_bUseMouse3rdPerson` is false. A controller
-can therefore report Target correctly while the game still thinks the mouse
-third-person camera owns aiming, causing lock-on to appear broken.
+The original PC weapon code drops a lock-on while its mouse third-person camera
+flag is active. The two games need slightly different compatibility handling:
 
-When `AutoAim=1` and controller Target is held, GInputNext now:
+- **Vice City:** retains the v12 behavior: while SDL controller Target is held,
+  the mouse-camera flag is saved, forced false, and restored exactly on release.
+- **GTA III:** the flag is forced false only inside the stock
+  `CPlayerPed::ProcessPlayerWeapon()` call. It is restored before the rest of
+  GTA III's camera system runs. If the user was in the normal PC mouse camera,
+  only the queued `MODE_SYPHON` handoff is cancelled; the acquired target and
+  stock target/weapon logic remain intact. First-person weapon modes are not
+  cancelled, and classic/non-mouse camera users retain stock Syphon behavior.
 
-1. saves the current `CCamera::m_bUseMouse3rdPerson` value;
-2. temporarily sets it to `false` so the stock controller lock-on branch runs;
-3. keeps using the game's own `FindWeaponLockOnTarget()` logic;
-4. restores the previous mouse-camera mode when Target is released, AutoAim is
-   disabled, the controller disconnects, or the plugin shuts down.
+Neither path changes San Andreas or native keyboard/mouse aiming.
 
-This preserves the user's normal mouse-camera setting outside controller
-lock-on instead of globally disabling mouse third-person aiming.
+
+### GTA III M16 first-person camera
+
+The GTA III M16 is excluded from GInputNext's lock-on compatibility path.
+When the current weapon is `WEAPONTYPE_M16`, GInputNext does not call
+`FindWeaponLockOnTarget()` and does not suppress `m_bUseMouse3rdPerson` around
+`ProcessPlayerWeapon()`. GTA III therefore owns the complete
+`MODE_M16_1ST_PERSON` enter/hold/exit sequence exactly as stock.
+
+Default packaged Y settings:
+
+```text
+GTA III / Vice City: InvertCameraY=0, InvertAimY=0
+San Andreas:         InvertCameraY=1, InvertAimY=1
+```
+
+
+## v15 classic first-person right-stick routing
+
+GTA III and Vice City retail controller first-person weapon cameras consume
+`SniperModeLookLeftRight/UpDown`, which are sourced from the game left stick.
+For these weapons only, GInputNext routes the physical right stick into that
+retail aim channel and clears the game's right-stick look-around channel.
+This prevents the two camera-input paths from competing while preserving
+left-stick aiming as a fallback. GTA SA is not part of this compatibility path.

@@ -5,6 +5,9 @@
 #include "ControllerCore.h"
 #include "GTAAdapter.h"
 #include "GameplayBridge.h"
+#if defined(GTA3)
+#include "GTA3WeaponAimHook.h"
+#endif
 #include "InputUpdateHook.h"
 #include "Log.h"
 #include "NativeDInputBlocker.h"
@@ -21,6 +24,9 @@ NativeDInputBlocker g_nativeDInput;
 InputUpdateHook g_inputHook;
 PauseBridge g_pauseBridge;
 GameplayBridge g_gameplayBridge;
+#if defined(GTA3)
+GTA3WeaponAimHook g_gta3WeaponAimHook;
+#endif
 
 bool g_ready = false;
 bool g_initAttempted = false;
@@ -112,7 +118,7 @@ void OnInit() {
     // modloader\GInputNext\ or scripts\GInputNext install self-contained.
     LogOpen(JoinPath(g_moduleDir, "GInputNext.log"));
 
-    Log("GInputNext v11 starting for %s", GameTag());
+    Log("GInputNext v15 starting for %s", GameTag());
     Log("Plugin-SDK reports: %s", plugin::GetGameVersionName());
     Log("GameDir   = \"%s\"", g_gameDir.c_str());
     Log("ModuleDir = \"%s\"", g_moduleDir.c_str());
@@ -155,6 +161,12 @@ void OnInit() {
         return;
     }
 
+#if defined(GTA3)
+    if (!g_gta3WeaponAimHook.Install(&g_core, &g_config)) {
+        Log("WARNING: GTA III scoped weapon-aim hook could not be installed; controller input remains active but GTA III AutoAim compatibility may be unavailable.");
+    }
+#endif
+
     g_ready = true;
     Log("GInputNext ready: nativeDInputSuppression=%d updatePadCallSites=%u",
         g_nativeDInput.IsEnabled() ? 1 : 0,
@@ -172,6 +184,9 @@ void ShutdownRuntime() {
     const bool hadInputHook = g_inputHook.IsInstalled();
 
     // Restore executable call sites before unloading any code they target.
+#if defined(GTA3)
+    g_gta3WeaponAimHook.Restore();
+#endif
     g_inputHook.Restore();
 
     // Only clear the staging buffer if this runtime actually owned the pad

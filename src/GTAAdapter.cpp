@@ -1,6 +1,11 @@
 #include "GTAAdapter.h"
 #include "plugin.h"
 #include "CPad.h"
+#if defined(GTA3) || defined(GTAVC)
+#include "CPlayerPed.h"
+#include "ClassicFirstPersonAim.h"
+#include "common.h"
+#endif
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -52,9 +57,8 @@ void GTAAdapter::StageBeforePadUpdate(const UnifiedState& s, const Config& confi
 
     if (!s.connected) return;
 
-    d.LeftStickX  = AxisToPad(s.leftX);
-    d.LeftStickY  = AxisToPad(s.leftY);
-    d.RightStickX = AxisToPad(s.rightX);
+    d.LeftStickX = AxisToPad(s.leftX);
+    d.LeftStickY = AxisToPad(s.leftY);
 
     float rightY = s.rightY;
     const bool targeting = IsControllerTargetHeld(*pad, s);
@@ -69,7 +73,36 @@ void GTAAdapter::StageBeforePadUpdate(const UnifiedState& s, const Config& confi
         rightY = -rightY;
     }
 
+#if defined(GTA3) || defined(GTAVC)
+    CPlayerPed* player = FindPlayerPed();
+    const bool classicFirstPersonAim =
+        targeting && IsClassicFirstPersonAimWeapon(player);
+
+    if (classicFirstPersonAim) {
+        // III/VC first-person weapon cameras do NOT use the normal right-stick
+        // look channel for controller aim. Retail SniperModeLook* reads the
+        // LEFT stick. Feeding both channels makes the old generic right-stick
+        // look path compete with the weapon camera and visibly kick/glitch it.
+        //
+        // Modernize only this context: physical right stick -> retail aim
+        // channel, and suppress the generic right-stick channel completely.
+        // Keep retail left-stick aiming as a fallback when the right stick is
+        // centered, which also preserves the games' original behavior.
+        const bool useRightStick =
+            s.rightX != 0.0f || s.rightY != 0.0f;
+
+        d.LeftStickX = AxisToPad(useRightStick ? s.rightX : s.leftX);
+        d.LeftStickY = AxisToPad(useRightStick ? rightY : s.leftY);
+        d.RightStickX = 0;
+        d.RightStickY = 0;
+    } else {
+        d.RightStickX = AxisToPad(s.rightX);
+        d.RightStickY = AxisToPad(rightY);
+    }
+#else
+    d.RightStickX = AxisToPad(s.rightX);
     d.RightStickY = AxisToPad(rightY);
+#endif
 
     // SDL logical layout -> GTA's PlayStation-named logical controller state:
     // A=Cross, B=Circle, X=Square, Y=Triangle.

@@ -47,11 +47,14 @@ struct Config {
     float outerDeadzone = 0.02f;
     float leftSensitivity = 1.0f;
     float rightSensitivity = 1.0f;
-    bool invertCameraY = true;
-#if defined(GTASA)
-    bool invertAimY = true;
-#else
+#if defined(GTA3) || defined(GTAVC)
+    // III/VC use the PC-era camera Y convention directly. SA needs the
+    // historical correction by default. Packaged INIs mirror these defaults.
+    bool invertCameraY = false;
     bool invertAimY = false;
+#else
+    bool invertCameraY = true;
+    bool invertAimY = true;
 #endif
 
     bool autoAim = true;

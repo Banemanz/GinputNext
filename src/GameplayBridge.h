@@ -10,13 +10,16 @@ public:
     void AfterPadUpdate(const UnifiedState& state, const Config& config);
 
 private:
+#if defined(GTAVC)
+    void SetClassicMouseAimOverride(bool enabled);
+    bool classicMouseAimOverrideActive_ = false;
+    bool savedMouse3rdPerson_ = false;
+#endif
+
     unsigned int lastFrame_ = 0xFFFFFFFFu;
     bool previousTarget_ = false;
     bool acquiredTarget_ = false;
     unsigned int nextRetryFrame_ = 0;
-
-    bool legacyMouseAimOverride_ = false;
-    bool savedMouse3rdPerson_ = true;
 };
 
 } // namespace gin
