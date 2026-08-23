@@ -34,9 +34,9 @@ GInputNext is a shared x86 Plugin-SDK controller backend built around **SDL2**. 
 
 | Game | Target executable | Plugin-SDK library | Status |
 |---|---|---|---|
-| GTA III | 1.0 EN | `plugin_iii.lib` | Supported; runtime testing ongoing |
-| GTA Vice City | 1.0 EN | `plugin_vc.lib` | Supported; runtime testing ongoing |
-| GTA San Andreas | 1.0 US | `plugin.lib` | Primary tested target |
+| GTA III | 1.0 EN | `plugin_iii.lib` | Primary tested target |
+| GTA Vice City | 1.0 EN | `plugin_vc.lib` | Primary tested target |
+| GTA San Andreas | 1.0 US | `plugin.lib` | Handful of bugs to be ironed out |
 
 Target Plugin-SDK commit:
 
