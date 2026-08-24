@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <cstdint>
 
 namespace gin {
 namespace {
@@ -31,6 +32,37 @@ static bool IsControllerTargetHeld(const CPad& pad, const UnifiedState& s) {
     // modes 0/1/2 and L1/LeftShoulder1 for mode 3.
     return pad.Mode == 3 ? s.lb : s.rb;
 }
+
+#if defined(GTASA)
+namespace sa {
+
+// GTA SA 1.0 US pad globals recovered from the SA IDB dump. Plugin-SDK's
+// public CPad class exposes the pad layout but not these static controller
+// preference bytes.
+constexpr std::uintptr_t kPadInvertLook4Pad = 0x00B73402;
+constexpr std::uintptr_t kPadSniperAimWithRightStick = 0x008CD782;
+
+static bool& PadBool(std::uintptr_t address) {
+    return *reinterpret_cast<bool*>(address);
+}
+
+static void ApplyNativeAimPolicy(bool userInvertVertical) {
+    // SA's sniper/RPG/weapon-look code chooses the active stick first and then
+    // applies bInvertLook4Pad. Pre-inverting only PCTempJoyState.RightStickY
+    // makes right-stick aiming disagree with the retail left-stick fallback.
+    //
+    // Runtime testing showed the native byte's sign is opposite of the
+    // user-facing GInputNext convention after SDL-normalized stick staging:
+    //   GInputNext Invert*=0 -> native bInvertLook4Pad=1
+    //   GInputNext Invert*=1 -> native bInvertLook4Pad=0
+    // This preserves coherent left-stick fallback and right-stick aim without
+    // resurrecting the one-stick-only preflip bandaid.
+    PadBool(kPadSniperAimWithRightStick) = true;
+    PadBool(kPadInvertLook4Pad) = !userInvertVertical;
+}
+
+} // namespace sa
+#endif
 
 } // namespace
 
@@ -69,11 +101,19 @@ void GTAAdapter::StageBeforePadUpdate(const UnifiedState& s, const Config& confi
     const bool invertVertical =
         targeting ? config.invertAimY : config.invertCameraY;
 
+#if defined(GTASA)
+    // Keep the staged SA stick axes in the game's native convention.  Vertical
+    // direction belongs in SA's own pad preference byte so every SA aim path
+    // (right stick, left-stick fallback, sniper/RPG, and weapon aim) agrees.
+    // ApplyNativeAimPolicy handles the native byte's opposite sign convention.
+    sa::ApplyNativeAimPolicy(invertVertical);
+    d.RightStickX = AxisToPad(s.rightX);
+    d.RightStickY = AxisToPad(rightY);
+#elif defined(GTA3) || defined(GTAVC)
     if (invertVertical) {
         rightY = -rightY;
     }
 
-#if defined(GTA3) || defined(GTAVC)
     CPlayerPed* player = FindPlayerPed();
     const bool classicFirstPersonAim =
         targeting && IsClassicFirstPersonAimWeapon(player);

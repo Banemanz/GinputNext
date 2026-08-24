@@ -32,7 +32,9 @@ assert "d.RightStickX = 0;" in adapter
 assert "d.RightStickY = 0;" in adapter
 assert "#if defined(GTA3) || defined(GTAVC)" in adapter
 
-# SA must retain the ordinary right-stick staging branch.
-assert "#else\n    d.RightStickX = AxisToPad(s.rightX);" in adapter
+# SA must retain ordinary right-stick staging, not III/VC retail-left rerouting.
+assert "#if defined(GTASA)" in adapter
+assert "d.RightStickX = AxisToPad(s.rightX);" in adapter
+assert "d.RightStickY = AxisToPad(rightY);" in adapter
 
 print("III/VC first-person physical-right -> retail-left aim routing smoke: OK")

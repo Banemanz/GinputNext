@@ -14,7 +14,7 @@ time and dynamically links `SDL2.dll`.
 
 Project: `DK22Pac/plugin-sdk`  
 Pinned target commit:
-`62fd0ef66f704cf7e649607b57cc6e8097ed6e58`
+`624a6a49265fd7a6fc63bda1611013ceabeacb8a`
 
 Plugin-SDK is supplied separately by the user. This source tree includes no
 Plugin-SDK source or binaries.

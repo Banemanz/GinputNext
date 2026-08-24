@@ -34,14 +34,14 @@ GInputNext is a shared x86 Plugin-SDK controller backend built around **SDL2**. 
 
 | Game | Target executable | Plugin-SDK library | Status |
 |---|---|---|---|
-| GTA III | 1.0 EN | `plugin_iii.lib` | Primary tested target |
-| GTA Vice City | 1.0 EN | `plugin_vc.lib` | Primary tested target |
-| GTA San Andreas | 1.0 US | `plugin.lib` | Handful of bugs to be ironed out |
+| GTA III | 1.0 EN | `plugin_iii.lib` | Supported 1.0 |
+| GTA Vice City | 1.0 EN | `plugin_vc.lib` | Supported 1.0 |
+| GTA San Andreas | 1.0 US | `plugin.lib` | Supported 1.0 |
 
 Target Plugin-SDK commit:
 
 ```text
-62fd0ef66f704cf7e649607b57cc6e8097ed6e58
+624a6a49265fd7a6fc63bda1611013ceabeacb8a
 ```
 
 All three games are classic **32-bit x86** targets.
@@ -116,8 +116,8 @@ No Windows keyboard event is injected and the frontend is not called directly; G
 
 ```ini
 [Sticks]
-InvertCameraY=1
-InvertAimY=
+InvertCameraY=0
+InvertAimY=0
 
 [Gameplay]
 AutoAim=1
@@ -125,19 +125,19 @@ AutoAim=1
 
 `InvertCameraY` controls normal third-person / vehicle / free-look vertical direction.
 
-`InvertAimY` controls vertical right-stick direction while the logical Target button is held. Leave it blank to use the built-in game-specific default:
+`InvertAimY` controls vertical stick direction while the logical Target button is held. Defaults are non-inverted for all supported games:
 
 | Game | `InvertAimY` default |
 |---|---:|
 | GTA III | `0` |
 | Vice City | `0` |
-| San Andreas | `1` |
+| San Andreas | `0` |
 
-Set `InvertAimY=0` or `InvertAimY=1` explicitly to override that default.
+On San Andreas, GInputNext applies this through the game's native `CPad::bInvertLook4Pad` byte instead of pre-flipping only `RightStickY`; the native byte is written as the opposite of the user-facing invert setting. This keeps RPG/sniper right-stick aim coherent with SA's left-stick fallback aim.
 
 `AutoAim=1` uses each game's own `CPlayerPed::FindWeaponLockOnTarget()` target selection rather than implementing a custom scanner, so weapon range, target visibility, target priority, and target choice remain stock GTA.
 
-San Andreas keeps its free-aim state on the lock-on branch while controller Target is held. GTA III and Vice City have an additional PC-specific quirk: their stock lock-on branch is gated by `CCamera::m_bUseMouse3rdPerson`. GInputNext temporarily hands aiming ownership to the stock controller branch while Target is held, then restores the previous mouse-camera setting on release.
+San Andreas keeps its free-aim state on the lock-on branch while controller Target is held. v18 also leaves staged SA stick axes unflipped and drives the native `CPad::bSniperAimWithRightStick` / opposite-sign `CPad::bInvertLook4Pad` bytes so sniper/RPG aim uses the right stick without a one-stick-only inversion bug. GTA III and Vice City have an additional PC-specific quirk: their stock lock-on branch is gated by `CCamera::m_bUseMouse3rdPerson`. GInputNext temporarily hands aiming ownership to the stock controller branch while Target is held, then restores the previous mouse-camera setting on release.
 
 More detail is in [`AIMING.md`](AIMING.md).
 
@@ -203,8 +203,8 @@ RightInnerDeadzone=0.12
 OuterDeadzone=0.02
 LeftSensitivity=1.00
 RightSensitivity=1.00
-InvertCameraY=1
-InvertAimY=
+InvertCameraY=0
+InvertAimY=0
 
 [Gameplay]
 AutoAim=1
@@ -254,7 +254,7 @@ The mapping is installed before the device is opened through SDL's normalized Ga
 
 - Visual Studio 2022 / v143
 - Win32 / x86 C++ toolchain
-- Plugin-SDK at commit `62fd0ef66f704cf7e649607b57cc6e8097ed6e58`
+- Plugin-SDK at commit `624a6a49265fd7a6fc63bda1611013ceabeacb8a`
 
 Set:
 

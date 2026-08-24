@@ -91,3 +91,11 @@ Runtime version log updated
 C++ brace balance OK
 No raw/function-entry detour machinery introduced
 Existing + camera/aim/cross-game signature smoke tests OK
+
+
+2026-08-24 v18 SA right-stick aim audit
+- Audited uploaded SA IDB dump around CPad sniper/RPG/aim functions.
+- Confirmed SA uses CPad::bSniperAimWithRightStick (0x008CD782) to select right-stick vs left-stick sniper/RPG aim.
+- Confirmed SA applies CPad::bInvertLook4Pad (0x00B73402) after active-stick selection in SniperModeLookUpDown, AimWeaponUpDown, and LookAroundUpDown.
+- Removed SA-only pre-inversion of staged RightStickY; inversion now uses the native SA pad byte.
+- Set SA packaged InvertCameraY/InvertAimY defaults to 0.

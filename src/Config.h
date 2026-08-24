@@ -47,15 +47,13 @@ struct Config {
     float outerDeadzone = 0.02f;
     float leftSensitivity = 1.0f;
     float rightSensitivity = 1.0f;
-#if defined(GTA3) || defined(GTAVC)
-    // III/VC use the PC-era camera Y convention directly. SA needs the
-    // historical correction by default. Packaged INIs mirror these defaults.
+
+    // User-facing inversion defaults are off for all games.
+    // San Andreas vertical direction is applied through the game's native
+    // CPad::bInvertLook4Pad path, whose sign is opposite of this normalized
+    // user-facing setting after SDL stick staging.
     bool invertCameraY = false;
     bool invertAimY = false;
-#else
-    bool invertCameraY = true;
-    bool invertAimY = true;
-#endif
 
     bool autoAim = true;
 
