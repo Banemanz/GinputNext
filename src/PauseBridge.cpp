@@ -38,7 +38,7 @@ void PauseBridge::AfterPadUpdate(
     // same synthetic Old/New edge instead of consuming the Start press on the
     // first call and erasing it on the second.
     const unsigned int frame = CTimer::m_FrameCounter;
-    if (frame != lastFrame_) {
+    if (frame != lastFrame_ || !state.connected) {
         lastFrame_ = frame;
         frameOldStart_ = previousStart_;
         frameNewStart_ = state.connected && state.start;

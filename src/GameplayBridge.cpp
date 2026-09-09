@@ -1,4 +1,5 @@
 #include "GameplayBridge.h"
+#include "InputContext.h"
 #include "Log.h"
 #include "plugin.h"
 #include "CPad.h"
@@ -28,14 +29,16 @@ static CPlayerPed* GetActivePlayerPed() {
 #endif
 }
 
-#if defined(GTAVC)
-static bool IsControllerTargetHeld(const CPad& pad, const UnifiedState& state) {
+static bool IsControllerTargetHeld(const CPad& pad, const UnifiedState& state, const Config& config) {
+    if (config.controlProfile == ControlProfile::Modern) {
+        return state.leftTrigger >= 0.30f;
+    }
+
     // Same target-button convention used by GTAAdapter: modes 0/1/2 use R1,
     // mode 3 uses L1. Keep the camera override controller-only so native
     // keyboard/mouse aiming remains untouched.
     return pad.Mode == 3 ? state.lb : state.rb;
 }
-#endif
 
 } // namespace
 
@@ -73,9 +76,10 @@ void GameplayBridge::Reset() {
 
 void GameplayBridge::AfterPadUpdate(
     const UnifiedState& state,
-    const Config& config) {
+    const Config& config,
+    bool controllerAllowed) {
 
-    if (!state.connected) {
+    if (!state.connected || !controllerAllowed) {
 #if defined(GTAVC)
         SetClassicMouseAimOverride(false);
 #endif
@@ -85,7 +89,7 @@ void GameplayBridge::AfterPadUpdate(
     }
 
     CPad* pad = CPad::GetPad(0);
-    if (!pad) {
+    if (!PlayerControlsAvailable(pad) || ControlledVehicle() != nullptr) {
 #if defined(GTAVC)
         SetClassicMouseAimOverride(false);
 #endif
@@ -97,7 +101,7 @@ void GameplayBridge::AfterPadUpdate(
 #if defined(GTAVC)
     // VC's persistent compatibility override is only for classic lock-on
     // weapons. Its first-person weapon family owns its camera completely.
-    const bool controllerTargetHeld = IsControllerTargetHeld(*pad, state);
+    const bool controllerTargetHeld = IsControllerTargetHeld(*pad, state, config);
     const bool classicFirstPersonAim =
         controllerTargetHeld && IsClassicFirstPersonAimWeapon(player);
     SetClassicMouseAimOverride(
@@ -110,7 +114,7 @@ void GameplayBridge::AfterPadUpdate(
     }
     lastFrame_ = frame;
 
-    const bool targeting = pad->GetTarget();
+    const bool targeting = IsControllerTargetHeld(*pad, state, config);
     const bool targetPressed = targeting && !previousTarget_;
     previousTarget_ = targeting;
 

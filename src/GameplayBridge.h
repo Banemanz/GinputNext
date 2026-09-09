@@ -7,7 +7,7 @@ namespace gin {
 class GameplayBridge {
 public:
     void Reset();
-    void AfterPadUpdate(const UnifiedState& state, const Config& config);
+    void AfterPadUpdate(const UnifiedState& state, const Config& config, bool controllerAllowed = true);
 
 private:
 #if defined(GTAVC)

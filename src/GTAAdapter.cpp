@@ -1,10 +1,12 @@
 #include "GTAAdapter.h"
+#include "InputContext.h"
+#include "ControlActions.h"
 #include "plugin.h"
 #include "CPad.h"
+#include "common.h"
 #if defined(GTA3) || defined(GTAVC)
 #include "CPlayerPed.h"
 #include "ClassicFirstPersonAim.h"
-#include "common.h"
 #endif
 #include <algorithm>
 #include <cmath>
@@ -27,7 +29,38 @@ static short Press(bool down) {
     return down ? 255 : 0;
 }
 
-static bool IsControllerTargetHeld(const CPad& pad, const UnifiedState& s) {
+static bool modeOwned = false;
+static short savedMode = 0;
+static void RestoreModernMode(CPad* pad) {
+    if (modeOwned && pad) pad->Mode = savedMode;
+    modeOwned = false;
+}
+static void ApplyModernMode(CPad* pad, bool enabled) {
+    if (!enabled) { RestoreModernMode(pad); return; }
+    if (!modeOwned) { savedMode = pad->Mode; modeOwned = true; }
+    pad->Mode = 0; // Native horn/jump/sprint queries use this logical layout.
+}
+static bool IsModernProfile(const Config& config) {
+    return config.controlProfile == ControlProfile::Modern;
+}
+
+static bool PlayerInVehicle() {
+#if defined(GTASA)
+    return ControlledVehicle() != nullptr;
+#elif defined(GTA3) || defined(GTAVC)
+    return ControlledVehicle() != nullptr;
+#else
+    return false;
+#endif
+}
+
+static bool IsControllerTargetHeld(const CPad& pad, const UnifiedState& s, const Config& config) {
+    if (IsModernProfile(config)) {
+        // Modern on-foot aim is LT/L2.  Do not include LB/RB here: LB is
+        // weapon-wheel/drive-by intent in IV/V and RB is cover/handbrake.
+        return s.leftTrigger >= 0.30f;
+    }
+
     // Classic III/VC/SA GetTarget semantics use R1/RightShoulder1 for pad
     // modes 0/1/2 and L1/LeftShoulder1 for mode 3.
     return pad.Mode == 3 ? s.lb : s.rb;
@@ -46,7 +79,19 @@ static bool& PadBool(std::uintptr_t address) {
     return *reinterpret_cast<bool*>(address);
 }
 
+static bool policyOwned = false, savedSniper = false, savedInvert = false;
+static void RestoreNativeAimPolicy() {
+    if (!policyOwned) return;
+    PadBool(kPadSniperAimWithRightStick) = savedSniper;
+    PadBool(kPadInvertLook4Pad) = savedInvert;
+    policyOwned = false;
+}
 static void ApplyNativeAimPolicy(bool userInvertVertical) {
+    if (!policyOwned) {
+        savedSniper = PadBool(kPadSniperAimWithRightStick);
+        savedInvert = PadBool(kPadInvertLook4Pad);
+        policyOwned = true;
+    }
     // SA's sniper/RPG/weapon-look code chooses the active stick first and then
     // applies bInvertLook4Pad. Pre-inverting only PCTempJoyState.RightStickY
     // makes right-stick aiming disagree with the retail left-stick fallback.
@@ -67,12 +112,16 @@ static void ApplyNativeAimPolicy(bool userInvertVertical) {
 } // namespace
 
 void GTAAdapter::ClearStagedGamepad() {
+#if defined(GTASA)
+    sa::RestoreNativeAimPolicy();
+#endif
     CPad* pad = CPad::GetPad(0);
     if (!pad) return;
+    RestoreModernMode(pad);
     std::memset(&pad->PCTempJoyState, 0, sizeof(pad->PCTempJoyState));
 }
 
-void GTAAdapter::StageBeforePadUpdate(const UnifiedState& s, const Config& config) {
+void GTAAdapter::StageBeforePadUpdate(const UnifiedState& s, const Config& config, bool controllerAllowed) {
     CPad* pad = CPad::GetPad(0);
     if (!pad) return;
 
@@ -87,13 +136,24 @@ void GTAAdapter::StageBeforePadUpdate(const UnifiedState& s, const Config& confi
     auto& d = pad->PCTempJoyState;
     std::memset(&d, 0, sizeof(d));
 
-    if (!s.connected) return;
+    if (!s.connected || !controllerAllowed) {
+        RestoreModernMode(pad);
+#if defined(GTASA)
+        sa::RestoreNativeAimPolicy();
+#endif
+        return;
+    }
+
+    const bool modernProfile = IsModernProfile(config) && !FrontendActive();
+    const bool modernVehicle = modernProfile && PlayerInVehicle();
+    const bool modernOnFoot = modernProfile && !modernVehicle;
+    ApplyModernMode(pad, modernProfile);
 
     d.LeftStickX = AxisToPad(s.leftX);
     d.LeftStickY = AxisToPad(s.leftY);
 
     float rightY = s.rightY;
-    const bool targeting = IsControllerTargetHeld(*pad, s);
+    const bool targeting = !PlayerInVehicle() && !FrontendActive() && IsControllerTargetHeld(*pad, s, config);
 
     // Camera and weapon-aim inversion are independent choices.
     // Exactly one policy is selected for a frame, so enabling both does NOT
@@ -106,7 +166,8 @@ void GTAAdapter::StageBeforePadUpdate(const UnifiedState& s, const Config& confi
     // direction belongs in SA's own pad preference byte so every SA aim path
     // (right stick, left-stick fallback, sniper/RPG, and weapon aim) agrees.
     // ApplyNativeAimPolicy handles the native byte's opposite sign convention.
-    sa::ApplyNativeAimPolicy(invertVertical);
+    if (FrontendActive()) sa::RestoreNativeAimPolicy();
+    else sa::ApplyNativeAimPolicy(invertVertical);
     d.RightStickX = AxisToPad(s.rightX);
     d.RightStickY = AxisToPad(rightY);
 #elif defined(GTA3) || defined(GTAVC)
@@ -144,17 +205,39 @@ void GTAAdapter::StageBeforePadUpdate(const UnifiedState& s, const Config& confi
     d.RightStickY = AxisToPad(rightY);
 #endif
 
-    // SDL logical layout -> GTA's PlayStation-named logical controller state:
-    // A=Cross, B=Circle, X=Square, Y=Triangle.
-    d.ButtonCross    = Press(s.a);
-    d.ButtonCircle   = Press(s.b);
-    d.ButtonSquare   = Press(s.x);
+    // Native action values keep camera, physics, audio and script readers coherent.
+    // Raw physical RT/LT never occupy the classic side-camera trigger slots.
+    d.ButtonCross = modernVehicle && !ModernVehicleIsBicycle() ? TriggerToPad(s.rightTrigger) : Press(s.a);
+    d.ButtonSquare = modernVehicle ? TriggerToPad(s.leftTrigger) : Press(s.x);
     d.ButtonTriangle = Press(s.y);
-
-    d.LeftShoulder1  = Press(s.lb);
-    d.LeftShoulder2  = TriggerToPad(s.leftTrigger);
-    d.RightShoulder1 = Press(s.rb);
-    d.RightShoulder2 = TriggerToPad(s.rightTrigger);
+    d.ButtonCircle = Press(modernVehicle ? s.lb : (modernProfile ? ModernAttackHeld(s) : s.b));
+    // SA primary/secondary vehicle weapon selectors are distinct: Circle / L1.
+    d.LeftShoulder1 = Press(modernVehicle ? s.b : (modernOnFoot ? false : s.lb));
+    d.RightShoulder1 = modernOnFoot ? Press(s.leftTrigger >= 0.30f) :
+        Press(modernVehicle ? (s.rb || (!ModernVehicleIsBicycle() && s.a)) : s.rb);
+    // On foot these are weapon-cycle / shift-target action slots, not raw triggers.
+    d.LeftShoulder2 = modernOnFoot ? Press(s.lb) : (modernProfile ? 0 : TriggerToPad(s.leftTrigger));
+    d.RightShoulder2 = modernOnFoot ? Press(s.rb) : (modernProfile ? 0 : TriggerToPad(s.rightTrigger));
+    if (modernVehicle) {
+        auto* vehicle = ControlledVehicle();
+#if defined(GTA3)
+        const bool driveByVehicle = vehicle && vehicle->m_nVehicleClass == 0;
+#else
+        const int appearance = vehicle ? vehicle->GetVehicleAppearance() : 0;
+        const bool driveByVehicle = appearance == VEHICLE_APPEARANCE_AUTOMOBILE ||
+            appearance == VEHICLE_APPEARANCE_BIKE || appearance == VEHICLE_APPEARANCE_BOAT;
+#endif
+        if (driveByVehicle && !ModernVehicleIsAircraft() && s.lb) {
+            d.LeftShoulder2 = Press(s.rightX < -0.5f);
+            d.RightShoulder2 = Press(s.rightX > 0.5f);
+        }
+        if (ModernVehicleIsAircraft()) {
+            d.LeftShoulder2 = Press(s.lb);
+            d.RightShoulder2 = Press(s.rb);
+            d.RightShoulder1 = Press(s.x);
+            d.ButtonCircle = Press(s.a);
+        }
+    }
 
     d.DPadUp    = Press(s.dpadUp);
     d.DPadDown  = Press(s.dpadDown);

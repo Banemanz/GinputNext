@@ -272,7 +272,7 @@ bool ControllerCore::OpenGenericJoystick(int joystickIndex) {
     const char* name = sdl::JoystickName(joystick_);
     deviceName_ = name ? name : "Generic DirectInput joystick";
 
-    if (config_.rumbleEnabled && sdl::JoystickIsHaptic(joystick_)) {
+    if (config_.rumbleEnabled && sdl::JoystickIsHaptic(joystick_) > 0) {
         haptic_ = sdl::HapticOpenFromJoystick(joystick_);
         if (haptic_ && sdl::HapticRumbleInit(haptic_) != 0) {
             sdl::HapticClose(haptic_);
@@ -365,6 +365,7 @@ void ControllerCore::InstallBuiltInMappings() {
 void ControllerCore::ScanAndOpen() {
     if (!initialized_ || controller_ || joystick_) return;
 
+    InstallBuiltInMappings(); // Include controllers attached after startup.
     const int count = sdl::NumJoysticks();
     int logicalIndex = 0;
 
@@ -376,7 +377,7 @@ void ControllerCore::ScanAndOpen() {
 
     if (!config_.allowGenericDirectInput) return;
 
-    logicalIndex = 0;
+    // Continue the same logical index through the generic-device list.
     for (int i = 0; i < count; ++i) {
         if (sdl::IsGameController(i)) continue;
         if (logicalIndex++ != config_.controllerIndex) continue;
@@ -559,6 +560,22 @@ void ControllerCore::PollGenericJoystick() {
     }
 
     ApplyDeadzones();
+}
+
+void ControllerCore::ApplyLiveConfig(const Config& config) {
+    if (initialized_ && config_.rumbleEnabled && !config.rumbleEnabled) {
+        if (controller_) sdl::GameControllerRumble(controller_, 0, 0, 0);
+        if (haptic_) sdl::HapticRumbleStop(haptic_);
+    }
+    const bool enableHaptic = initialized_ && !config_.rumbleEnabled && config.rumbleEnabled;
+    config_ = config;
+    if (enableHaptic && usingGeneric_ && joystick_ && !haptic_ && sdl::JoystickIsHaptic(joystick_) > 0) {
+        haptic_ = sdl::HapticOpenFromJoystick(joystick_);
+        if (haptic_ && sdl::HapticRumbleInit(haptic_) != 0) {
+            sdl::HapticClose(haptic_);
+            haptic_ = nullptr;
+        }
+    }
 }
 
 void ControllerCore::Tick() {

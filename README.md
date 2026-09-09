@@ -4,7 +4,7 @@ Modern controller support for the classic PC versions of **Grand Theft Auto III*
 
 GInputNext is a shared x86 Plugin-SDK controller backend built around **SDL2**. It is intended as a modern successor in spirit to older XInput-focused controller mods: Xbox, PlayStation, Nintendo, and legacy DirectInput-style pads go through one normalized input layer while GTA keeps its normal keyboard, mouse, frontend, gameplay, and script logic.
 
-> **Status:** Work in progress. GTA San Andreas 1.0 US is the most heavily tested target. GTA III and Vice City share the same backend and are supported, with additional runtime testing still welcome.
+> **Status:** v25 source audit and repairs. All three game variants passed host logic regressions and Windows x86 compilation against Plugin-SDK 10/25/2025. This pass did not link ASIs or run the games. See [`new chat/HANDOFF.md`](new%20chat/HANDOFF.md) for evidence and remaining work.
 
 ## Features
 
@@ -34,11 +34,11 @@ GInputNext is a shared x86 Plugin-SDK controller backend built around **SDL2**. 
 
 | Game | Target executable | Plugin-SDK library | Status |
 |---|---|---|---|
-| GTA III | 1.0 EN | `plugin_iii.lib` | Supported 1.0 |
-| GTA Vice City | 1.0 EN | `plugin_vc.lib` | Supported 1.0 |
-| GTA San Andreas | 1.0 US | `plugin.lib` | Supported 1.0 |
+| GTA III | 1.0 EN | `plugin_iii.lib` | Compile/fixture checked; game test pending |
+| GTA Vice City | 1.0 EN | `plugin_vc.lib` | Compile/fixture checked; game test pending |
+| GTA San Andreas | 1.0 US | `plugin.lib` | Compile/fixture checked; game test pending |
 
-Target Plugin-SDK commit:
+Target Plugin-SDK snapshot: **October 25, 2025** (commit timestamp `2025-10-25T07:53:23+02:00`):
 
 ```text
 624a6a49265fd7a6fc63bda1611013ceabeacb8a
@@ -99,7 +99,7 @@ GInputNext normalizes controllers to GTA's PlayStation-style logical controller 
 | Left stick | Left stick | Left stick |
 | Right stick | Right stick | Right stick |
 
-GTA itself still decides what those logical controls do on foot, in vehicles, in menus, and in scripts.
+This table describes Classic. Modern supplies context-specific native action values as documented below.
 
 ## Start / Pause Handling
 
@@ -137,7 +137,7 @@ On San Andreas, GInputNext applies this through the game's native `CPad::bInvert
 
 `AutoAim=1` uses each game's own `CPlayerPed::FindWeaponLockOnTarget()` target selection rather than implementing a custom scanner, so weapon range, target visibility, target priority, and target choice remain stock GTA.
 
-San Andreas keeps its free-aim state on the lock-on branch while controller Target is held. v18 also leaves staged SA stick axes unflipped and drives the native `CPad::bSniperAimWithRightStick` / opposite-sign `CPad::bInvertLook4Pad` bytes so sniper/RPG aim uses the right stick without a one-stick-only inversion bug. GTA III and Vice City have an additional PC-specific quirk: their stock lock-on branch is gated by `CCamera::m_bUseMouse3rdPerson`. GInputNext temporarily hands aiming ownership to the stock controller branch while Target is held, then restores the previous mouse-camera setting on release.
+San Andreas keeps its free-aim state on the lock-on branch while controller Target is held. v18+ leaves staged SA stick axes unflipped and drives the native `CPad::bSniperAimWithRightStick` / opposite-sign `CPad::bInvertLook4Pad` bytes so sniper/RPG aim uses the right stick without a one-stick-only inversion bug. GTA III and Vice City have an additional PC-specific quirk: their stock lock-on branch is gated by `CCamera::m_bUseMouse3rdPerson`. GInputNext temporarily hands aiming ownership to the stock controller branch while Target is held, then restores the previous mouse-camera setting on release.
 
 More detail is in [`AIMING.md`](AIMING.md).
 
@@ -209,6 +209,15 @@ InvertAimY=0
 [Gameplay]
 AutoAim=1
 
+[Controls]
+Profile=Classic
+Modern=0
+
+[InGameConfig]
+Enabled=1
+HotkeyVK=119
+ControllerChord=1
+
 [Gyro]
 Enabled=0
 Sensitivity=0.35
@@ -222,6 +231,65 @@ Strength=1.00
 ```
 
 Unknown legacy DirectInput devices can also use the raw `[GenericDirectInput]` fallback mapping.
+
+## In-Game Config
+
+GInputNext v25 repairs Modern action staging and input ownership and keeps the live trainer panel. Open it while the game is running with **F8** or the controller chord **Back + Start + Y/North**.
+
+The overlay is an external borderless, no-activate GDI trainer window. Exclusive fullscreen visibility is not established; use windowed/borderless mode for validation. It does not use child checkbox controls and it does not steal focus from the game. Navigate with D-pad / arrow keys, toggle with A / Enter, close with B / Escape, and use the menu's save row to write `GInputNext.ini`. The top-right shows both the detected controller family and the current input owner (`Controller` or `Keyboard/mouse`).
+
+Live options currently exposed:
+
+- Control profile: Classic / Modern
+- AutoAim
+- Start/Options-to-Escape pause bridge
+- Camera Y inversion
+- Aim Y inversion
+- Rumble
+- Save settings
+
+## Modern Controls Profile
+
+Classic remains the default. Modern controls are opt-in through the in-game overlay or INI:
+
+```ini
+[Controls]
+Profile=Modern
+Modern=1
+```
+
+Modern uses audited action-query hooks and native action staging, with separate
+foot, motor vehicle, aircraft, bicycle and frontend contexts. LT/RT do not leak
+into the old shoulder side-camera inputs. Unhooked native queries still receive
+acceleration, fire, target and other required action values.
+
+See the complete mapping table and design in
+[`new chat/MODERN_CONTROLS_AUDIT.md`](new%20chat/MODERN_CONTROLS_AUDIT.md).
+Each of the 119 patched CALL instructions is validated before installation;
+a mismatch restores partial patches and leaves Classic selected.
+
+This is a modern layout for existing game actions. GTA IV/V cover, weapon-wheel
+and new combat/task systems are not implemented. There is no arbitrary
+per-action rebinding editor; device normalization and generic raw mapping are
+configured separately (see CONTROLLER_MAPPING.md).
+
+## Keyboard / mouse arbitration
+
+Keyboard presses and relative mouse input transfer ownership to native PC input.
+Ownership remains there until a fresh controller button press or meaningful
+analog change. An unchanged held button/trigger cannot continuously steal it.
+
+```ini
+[Input]
+AutoSwitchKeyboardMouse=1
+KeyboardMouseCooldownFrames=90
+ControllerWakeStickThreshold=0.20
+ControllerWakeTriggerThreshold=0.30
+```
+
+`KeyboardMouseCooldownFrames` is a legacy round-trip setting and is ignored by
+the new ownership policy. Mouse activity uses the last completed game sample;
+this may add one pad-update of handoff latency.
 
 ## GC201 / Legacy PlayStation-Style DirectInput Mapping
 
@@ -333,7 +401,9 @@ DebugInput=1
 
 ## Known Limitations
 
-- GTA III and Vice City still benefit from more controller/runtime testing than San Andreas.
+- All three games require runtime acceptance testing for these changes; compile and fixture checks do not establish gameplay completion.
+- The trainer uses an external GDI window and needs validation in fullscreen.
+- Arbitrary action rebinding and full GTA IV/V gameplay features remain unimplemented.
 - Original DualShock 3 Bluetooth behavior on Windows depends heavily on the installed driver / Bluetooth stack.
 - Unknown generic DirectInput pads may require a custom raw mapping if they are not in the SDL controller database.
 - Controller glyph replacement is not currently included; the exported controller-family API is intended to support a separate prompt module cleanly.

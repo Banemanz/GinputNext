@@ -3,6 +3,11 @@
 
 namespace gin {
 
+enum class ControlProfile {
+    Classic,
+    Modern
+};
+
 struct GenericMap {
     int leftX = 0;
     int leftY = 1;
@@ -57,6 +62,24 @@ struct Config {
 
     bool autoAim = true;
 
+    // When the player uses keyboard or mouse, temporarily stand down the
+    // controller staging and modern action hooks so native PC controls do not
+    // fight with a connected-but-idle controller. Any meaningful controller
+    // movement/button immediately hands ownership back to GInputNext.
+    bool autoSwitchKeyboardMouse = true;
+    int keyboardMouseCooldownFrames = 90; // Legacy INI round-trip only; ownership now waits for fresh input.
+    float controllerWakeStickThreshold = 0.20f;
+    float controllerWakeTriggerThreshold = 0.30f;
+
+    // Classic preserves each game's PS2-era logical controls. Modern is
+    // implemented with game-specific action-method hooks so shared CPad fields
+    // are not globally reshuffled across frontend/scripts/weapon/vehicle paths.
+    ControlProfile controlProfile = ControlProfile::Classic;
+
+    bool inGameConfigEnabled = true;
+    bool inGameConfigControllerChord = true;
+    int inGameConfigHotkeyVK = 0x77; // VK_F8
+
     bool gyroEnabled = false;
     float gyroSensitivity = 0.35f;
     bool invertGyroX = false;
@@ -69,6 +92,7 @@ struct Config {
     GenericMap generic;
 
     bool Load(const std::string& path);
+    bool Save(const std::string& path) const;
 };
 
 } // namespace gin

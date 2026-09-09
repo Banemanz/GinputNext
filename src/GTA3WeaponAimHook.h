@@ -19,6 +19,7 @@ class GTA3WeaponAimHook {
 public:
     bool Install(const ControllerCore* core, const Config* config);
     void Restore();
+    void SetControllerAllowed(bool allowed) { controllerAllowed_ = allowed; }
 
     bool IsInstalled() const { return !sites_.empty(); }
     std::size_t SiteCount() const { return sites_.size(); }
@@ -39,6 +40,7 @@ private:
     const Config* config_ = nullptr;
     std::vector<Site> sites_;
 
+    bool controllerAllowed_ = false;
     static GTA3WeaponAimHook* active_;
 };
 

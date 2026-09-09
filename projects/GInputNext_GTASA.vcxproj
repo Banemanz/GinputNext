@@ -42,7 +42,7 @@
       <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>GTASA;PLUGIN_SGV_10US;RW;WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GTASA;PLUGIN_SGV_10US;RW;WIN32;NOMINMAX;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\src;$(ProjectDir)..\include;$(SDL2_DIR)\include;$(PLUGIN_SDK_DIR)\plugin_sa;$(PLUGIN_SDK_DIR)\plugin_sa\game_sa;$(PLUGIN_SDK_DIR)\plugin_sa\game_sa\rw;$(PLUGIN_SDK_DIR)\safetyhook;$(PLUGIN_SDK_DIR)\shared;$(PLUGIN_SDK_DIR)\shared\game;$(PLUGIN_SDK_DIR)\shared\dxsdk;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -55,7 +55,7 @@
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)GInputNext.map</MapFileName>
       <AdditionalLibraryDirectories>$(PLUGIN_SDK_DIR)\output\lib;$(SDL2_DIR)\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>plugin.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;plugin.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImportLibrary>$(IntDir)GInputNext.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
@@ -71,7 +71,10 @@ copy /Y "$(ProjectDir)..\third_party\SDL_GameControllerDB\gamecontrollerdb.txt" 
     <ClCompile Include="$(ProjectDir)..\src\GTAAdapter.cpp" />
     <ClCompile Include="$(ProjectDir)..\src\GameplayBridge.cpp" />
     <ClCompile Include="$(ProjectDir)..\src\InputUpdateHook.cpp" />
+    <ClCompile Include="$(ProjectDir)..\src\InputArbitration.cpp" />
+    <ClCompile Include="$(ProjectDir)..\src\InGameConfigUI.cpp" />
     <ClCompile Include="$(ProjectDir)..\src\Log.cpp" />
+    <ClCompile Include="$(ProjectDir)..\src\ModernControlsHook.cpp" />
     <ClCompile Include="$(ProjectDir)..\src\NativeDInputBlocker.cpp" />
     <ClCompile Include="$(ProjectDir)..\src\PauseBridge.cpp" />
     <ClCompile Include="$(ProjectDir)..\src\SDL2Dyn.cpp" />
@@ -79,11 +82,17 @@ copy /Y "$(ProjectDir)..\third_party\SDL_GameControllerDB\gamecontrollerdb.txt" 
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(ProjectDir)..\src\Config.h" />
+    <ClInclude Include="$(ProjectDir)..\src\InputContext.h" />
+    <ClInclude Include="$(ProjectDir)..\src\ControlActions.h" />
+    <ClInclude Include="$(ProjectDir)..\src\UnifiedState.h" />
     <ClInclude Include="$(ProjectDir)..\src\ControllerCore.h" />
     <ClInclude Include="$(ProjectDir)..\src\GTAAdapter.h" />
     <ClInclude Include="$(ProjectDir)..\src\GameplayBridge.h" />
     <ClInclude Include="$(ProjectDir)..\src\InputUpdateHook.h" />
+    <ClInclude Include="$(ProjectDir)..\src\InputArbitration.h" />
+    <ClInclude Include="$(ProjectDir)..\src\InGameConfigUI.h" />
     <ClInclude Include="$(ProjectDir)..\src\Log.h" />
+    <ClInclude Include="$(ProjectDir)..\src\ModernControlsHook.h" />
     <ClInclude Include="$(ProjectDir)..\src\NativeDInputBlocker.h" />
     <ClInclude Include="$(ProjectDir)..\src\PauseBridge.h" />
     <ClInclude Include="$(ProjectDir)..\src\SDL2Dyn.h" />

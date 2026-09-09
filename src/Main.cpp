@@ -5,11 +5,14 @@
 #include "ControllerCore.h"
 #include "GTAAdapter.h"
 #include "GameplayBridge.h"
+#include "InGameConfigUI.h"
 #if defined(GTA3)
 #include "GTA3WeaponAimHook.h"
 #endif
 #include "InputUpdateHook.h"
+#include "InputArbitration.h"
 #include "Log.h"
+#include "ModernControlsHook.h"
 #include "NativeDInputBlocker.h"
 #include "PauseBridge.h"
 #include "../include/GInputNextAPI.h"
@@ -22,8 +25,11 @@ Config g_config;
 ControllerCore g_core;
 NativeDInputBlocker g_nativeDInput;
 InputUpdateHook g_inputHook;
+InputArbitration g_inputArbitration;
 PauseBridge g_pauseBridge;
 GameplayBridge g_gameplayBridge;
+InGameConfigUI g_inGameConfigUI;
+ModernControlsHook g_modernControlsHook;
 #if defined(GTA3)
 GTA3WeaponAimHook g_gta3WeaponAimHook;
 #endif
@@ -33,6 +39,7 @@ bool g_initAttempted = false;
 bool g_shutdown = false;
 std::string g_gameDir;
 std::string g_moduleDir;
+std::string g_configPath;
 
 const char* GameTag() {
 #if defined(GTA3)
@@ -70,6 +77,7 @@ void __cdecl UpdatePadsBridge() {
     g_nativeDInput.Maintain();
 
     // Poll SDL immediately BEFORE the game reconciles its controller state.
+    g_core.ApplyLiveConfig(g_config);
     g_core.Tick();
 
     if (g_config.debugInput) {
@@ -85,21 +93,49 @@ void __cdecl UpdatePadsBridge() {
         }
     }
 
-    GTAAdapter::StageBeforePadUpdate(g_core.State(), g_config);
+    const bool inputOwnerAllowed = g_inputArbitration.Tick(g_core.State(), g_config);
+
+    g_inGameConfigUI.SetModernAvailable(g_modernControlsHook.IsInstalled());
+    const bool wasOverlayOpen = g_inGameConfigUI.IsOpen();
+    g_inGameConfigUI.Tick(g_core.State(), g_config, g_inputArbitration.OwnerName());
+    if (!g_modernControlsHook.IsInstalled()) g_config.controlProfile = ControlProfile::Classic;
+    static bool overlayReleasePending = false;
+    bool menuKeyHeld = false;
+    for (int vk : {VK_ESCAPE,VK_BACK,VK_RETURN,VK_SPACE,VK_UP,VK_DOWN,VK_LEFT,VK_RIGHT})
+        menuKeyHeld |= (GetAsyncKeyState(vk) & 0x8000) != 0;
+    if (wasOverlayOpen || g_inGameConfigUI.IsOpen()) overlayReleasePending = true;
+    else if (!menuKeyHeld && ButtonMask(g_core.State()) == 0 &&
+             g_core.State().leftTrigger < 0.30f && g_core.State().rightTrigger < 0.30f)
+        overlayReleasePending = false;
+    const bool controllerAllowed = inputOwnerAllowed && !overlayReleasePending;
+    UnifiedState effectiveState = controllerAllowed ? g_core.State() : UnifiedState{};
+#if defined(GTA3)
+    g_gta3WeaponAimHook.SetControllerAllowed(controllerAllowed);
+#endif
+
+    GTAAdapter::StageBeforePadUpdate(g_core.State(), g_config, controllerAllowed);
 
     // Execute the untouched original GTA input update. This creates proper
     // OldState/NewState transitions for normal gameplay controls.
     g_inputHook.CallOriginal();
 
+    if (overlayReleasePending) {
+        if (auto* pad = CPad::GetPad(0)) {
+            pad->NewState = {}; pad->OldState = {};
+            pad->PCTempKeyState = {}; pad->PCTempMouseState = {};
+        }
+        CPad::NewKeyState = {}; CPad::OldKeyState = {};
+    }
     // Start/Pause is special on the classic PC ports. Preserve logical Start
     // for scripts/mods and optionally synthesize the native PC Escape edge so
     // the retail frontend actually opens/closes the pause menu.
     g_pauseBridge.AfterPadUpdate(
-        g_core.State(),
+        effectiveState,
         g_config.startActsAsEscape,
         g_config.debugInput);
 
-    g_gameplayBridge.AfterPadUpdate(g_core.State(), g_config);
+    g_modernControlsHook.AfterPadUpdate(g_core.State(), g_config, controllerAllowed);
+    g_gameplayBridge.AfterPadUpdate(g_core.State(), g_config, controllerAllowed);
 
     GTAAdapter::MirrorGameRumble(g_core, g_config);
 }
@@ -110,6 +146,7 @@ void OnInit() {
 
     g_pauseBridge.Reset();
     g_gameplayBridge.Reset();
+    g_inputArbitration.Reset();
 
     g_gameDir = GameDirectory();
     g_moduleDir = ModuleDirectory();
@@ -118,17 +155,20 @@ void OnInit() {
     // modloader\GInputNext\ or scripts\GInputNext install self-contained.
     LogOpen(JoinPath(g_moduleDir, "GInputNext.log"));
 
-    Log("GInputNext v15 starting for %s", GameTag());
+    Log("GInputNext v25 starting for %s", GameTag());
     Log("Plugin-SDK reports: %s", plugin::GetGameVersionName());
     Log("GameDir   = \"%s\"", g_gameDir.c_str());
     Log("ModuleDir = \"%s\"", g_moduleDir.c_str());
 
-    const auto ini = FindConfigPath();
+    g_configPath = FindConfigPath();
+    const auto& ini = g_configPath;
     if (!g_config.Load(ini)) {
         Log("Config not found/readable; using built-in defaults. Expected: \"%s\"", ini.c_str());
     } else {
         Log("Loaded config: \"%s\"", ini.c_str());
     }
+
+    g_inGameConfigUI.Init(g_configPath);
 
     if (!g_config.enabled) {
         Log("Disabled by config.");
@@ -136,7 +176,13 @@ void OnInit() {
         return;
     }
 
-    if (!plugin::IsSupportedGameVersion()) {
+#if defined(GTASA)
+    const bool auditedVersion = plugin::GetGameVersion() == GAME_10US_COMPACT ||
+        plugin::GetGameVersion() == GAME_10US_HOODLUM;
+#else
+    const bool auditedVersion = plugin::GetGameVersion() == GAME_10EN;
+#endif
+    if (!plugin::IsSupportedGameVersion() || !auditedVersion) {
         Log("Unsupported game executable for this build; plugin remains inert.");
         g_ready = true;
         return;
@@ -159,6 +205,11 @@ void OnInit() {
         g_nativeDInput.Restore();
         g_ready = true;
         return;
+    }
+
+    if (!g_modernControlsHook.Install(&g_core, &g_config)) {
+        g_config.controlProfile = ControlProfile::Classic;
+        Log("WARNING: modern hooks unavailable; Classic selected.");
     }
 
 #if defined(GTA3)
@@ -184,6 +235,7 @@ void ShutdownRuntime() {
     const bool hadInputHook = g_inputHook.IsInstalled();
 
     // Restore executable call sites before unloading any code they target.
+    g_modernControlsHook.Restore();
 #if defined(GTA3)
     g_gta3WeaponAimHook.Restore();
 #endif
@@ -196,6 +248,8 @@ void ShutdownRuntime() {
         g_pauseBridge.Reset();
         g_gameplayBridge.Reset();
     }
+
+    g_inGameConfigUI.Shutdown();
 
     g_core.Shutdown();
 

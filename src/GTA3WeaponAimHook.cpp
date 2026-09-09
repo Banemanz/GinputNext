@@ -13,6 +13,7 @@
 #include "ControllerCore.h"
 #include "GTA3WeaponAimHook.h"
 #include "Log.h"
+#include "InputContext.h"
 #include <cstring>
 
 namespace gin {
@@ -20,7 +21,7 @@ namespace gin {
 GTA3WeaponAimHook* GTA3WeaponAimHook::active_ = nullptr;
 
 std::uintptr_t GTA3WeaponAimHook::ProcessPlayerWeaponPreferredAddress() {
-    // Plugin-SDK 2025-10-27, GTA III 1.0 EN.
+    // Plugin-SDK 2025-10-25, GTA III 1.0 EN.
     return 0x4F1EF0;
 }
 
@@ -133,8 +134,11 @@ void GTA3WeaponAimHook::Restore() {
 }
 
 bool GTA3WeaponAimHook::ShouldUseControllerLockOn(const CPad& pad) const {
-    if (!core_ || !config_ || !config_->autoAim || !core_->IsConnected()) return false;
+    if (!controllerAllowed_ || !PlayerControlsAvailable(&pad) || !core_ || !config_ || !config_->autoAim || !core_->IsConnected()) return false;
     const UnifiedState& state = core_->State();
+    if (config_->controlProfile == ControlProfile::Modern) {
+        return state.leftTrigger >= 0.30f;
+    }
     return pad.Mode == 3 ? state.lb : state.rb;
 }
 
