@@ -1,0 +1,54 @@
+name: temp-sa-cpu-v13-build
+on:
+  push:
+    branches: [temp/sa-cpu-v13-build-20260920]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cat tmp/sa_v13_chunk_*.txt | base64 -d > /tmp/sa_cpu_v13.tar.xz
+          mkdir -p buildsrc
+          tar -xJf /tmp/sa_cpu_v13.tar.xz -C buildsrc
+      - name: Install LLVM-MinGW
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -L --fail --retry 3 https://github.com/mstorsjo/llvm-mingw/releases/download/20260908/llvm-mingw-20260908-ucrt-ubuntu-22.04-x86_64.tar.xz -o /tmp/llvm-mingw.tar.xz
+          tar -xJf /tmp/llvm-mingw.tar.xz -C /tmp
+          echo "/tmp/llvm-mingw-20260908-ucrt-ubuntu-22.04-x86_64/bin" >> "$GITHUB_PATH"
+      - name: Build and inspect ASI
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd buildsrc
+          CXX=i686-w64-mingw32-clang++ ./build.sh
+          file SA_CPU_Accelerator.asi
+          sha256sum SA_CPU_Accelerator.asi | tee SA_CPU_Accelerator.asi.sha256
+          i686-w64-mingw32-objdump -p SA_CPU_Accelerator.asi > SA_CPU_Accelerator.pe.txt
+          i686-w64-mingw32-objdump -d SA_CPU_Accelerator.asi > SA_CPU_Accelerator.disasm.txt
+          strings -a SA_CPU_Accelerator.asi | grep -E "1\.3\.0|CAMCPU|pathdisk|CollisionWarmKBPerFrame|FineHotspotProfiler"
+      - name: Package
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          cp buildsrc/SA_CPU_Accelerator.asi out/
+          cp buildsrc/SA_CPU_Accelerator.ini out/
+          cp buildsrc/SA_CPU_Accelerator.asi.sha256 out/
+          cp buildsrc/SA_CPU_Accelerator.pe.txt out/
+          cp buildsrc/SA_CPU_Accelerator.disasm.txt out/
+          cp buildsrc/README.md out/
+          cp buildsrc/CHANGELOG_1.3.0.md out/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SA_CPU_Accelerator_v1.3.0_CACHE_MODERN
+          path: out/*
+          if-no-files-found: error
+          retention-days: 1
